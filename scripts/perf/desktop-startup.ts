@@ -26,6 +26,8 @@ const { values: args } = NodeUtil.parseArgs({
     demo: { type: "string", default: "standard" },
     port: { type: "string", default: "9433" },
     screenshot: { type: "string" },
+    /** Keep one profile across runs: the first run is a first launch, later runs are warm. */
+    "reuse-home": { type: "boolean", default: false },
   },
 });
 
@@ -35,8 +37,13 @@ const debugPort = Number(args.port);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const sharedHome = args["reuse-home"]
+  ? NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "otter-calendar-desktop-"))
+  : null;
+
 async function run(index: number) {
-  const home = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "otter-calendar-desktop-"));
+  const home =
+    sharedHome ?? NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "otter-calendar-desktop-"));
   const started = performance.now();
   const child = NodeChildProcess.spawn(
     appImage,
@@ -109,12 +116,13 @@ async function run(index: number) {
     stop("SIGTERM");
     await sleep(1500);
     stop("SIGKILL");
-    NodeFS.rmSync(home, { recursive: true, force: true });
+    if (sharedHome === null) NodeFS.rmSync(home, { recursive: true, force: true });
   }
 }
 
 const results = [];
 for (let index = 0; index < Number(args.runs); index += 1) results.push(await run(index));
+if (sharedHome !== null) NodeFS.rmSync(sharedHome, { recursive: true, force: true });
 console.log(
   JSON.stringify({ app: NodePath.basename(appImage), demo: args.demo, runs: results }, null, 2),
 );
