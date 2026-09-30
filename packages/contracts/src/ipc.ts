@@ -418,6 +418,12 @@ export interface DesktopBridge {
   /** Receives a local OAuth code for a sign-in owned by a remote environment. */
   receiveProviderAuthCallback?: (authorizationUrl: string) => Promise<string>;
   cancelProviderAuthCallback?: (authorizationUrl: string) => Promise<void>;
+  /**
+   * Catches Google's loopback redirect on this computer for a calendar sign-in owned by a
+   * remote environment; resolves with the redirect URL for `calendar.google.connectComplete`.
+   */
+  receiveGoogleAuthCallback?: (authorizationUrl: string) => Promise<string>;
+  cancelGoogleAuthCallback?: (authorizationUrl: string) => Promise<void>;
   openExternal: (url: string) => Promise<boolean>;
   /** Present when the desktop shell can perform an ordered plain-text paste. */
   pasteAsText?: () => Promise<void>;

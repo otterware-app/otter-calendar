@@ -203,6 +203,10 @@
       "types": "./src/codexAuthHandoff.ts",
       "import": "./src/codexAuthHandoff.ts"
     },
+    "./googleAuthCallback": {
+      "types": "./src/googleAuthCallback.ts",
+      "import": "./src/googleAuthCallback.ts"
+    },
     "./calendar/time": {
       "types": "./src/calendar/time.ts",
       "import": "./src/calendar/time.ts"

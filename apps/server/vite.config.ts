@@ -125,6 +125,13 @@ export default mergeConfig(
         __T3CODE_BUILD_RELAY_CLIENT_OTLP_TRACES_TOKEN__: JSON.stringify(
           repoEnv.T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN?.trim() ?? "",
         ),
+        // A Google "Desktop app" OAuth client; see GoogleOAuthClientConfig.ts.
+        __T3CODE_BUILD_GOOGLE_CLIENT_ID__: JSON.stringify(
+          repoEnv.T3CODE_GOOGLE_CLIENT_ID?.trim() ?? "",
+        ),
+        __T3CODE_BUILD_GOOGLE_CLIENT_SECRET__: JSON.stringify(
+          repoEnv.T3CODE_GOOGLE_CLIENT_SECRET?.trim() ?? "",
+        ),
       },
     },
     test: {

@@ -45,3 +45,5 @@ export const SSH_PASSWORD_PROMPT_CANCELLED_RESULT = "ssh-password-prompt-cancell
 
 export const RECEIVE_PROVIDER_AUTH_CALLBACK_CHANNEL = "desktop:receive-provider-auth-callback";
 export const CANCEL_PROVIDER_AUTH_CALLBACK_CHANNEL = "desktop:cancel-provider-auth-callback";
+export const RECEIVE_GOOGLE_AUTH_CALLBACK_CHANNEL = "desktop:receive-google-auth-callback";
+export const CANCEL_GOOGLE_AUTH_CALLBACK_CHANNEL = "desktop:cancel-google-auth-callback";

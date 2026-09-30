@@ -2,13 +2,13 @@
  * GoogleAuth - Google sign-in for calendar accounts, owned by the environment.
  *
  * The OAuth client (a Google "Desktop app" client) comes from, in order: the calendar settings
- * (client id stored in SQLite, secret in the server's secret store), the
+ * (client id and secret stored together in the server's secret store), the
  * `T3CODE_GOOGLE_CLIENT_ID`/`T3CODE_GOOGLE_CLIENT_SECRET` environment variables, or values baked
  * into the build from the repository's `.env`. Tokens are stored per account in the secret
  * store; access tokens live in memory and are refreshed shortly before they expire.
  *
  * Sign-in is the installed-app flow with PKCE and a loopback redirect: the environment listens
- * on `127.0.0.1:<port>` itself, and also accepts the redirect URL from a client (the desktop
+ * on `http://127.0.0.1:<port>` itself, and also accepts the redirect URL from a client (the desktop
  * app catching it on its own loopback port, or the user pasting it) for browsers on another
  * machine. See `docs/internals/calendar-engine.md`.
  *
@@ -80,5 +80,5 @@ export interface GoogleAuthShape {
 }
 
 export class GoogleAuth extends Context.Service<GoogleAuth, GoogleAuthShape>()(
-  "t3/calendar/GoogleAuth",
+  "t3/calendar/google/GoogleAuth",
 ) {}
