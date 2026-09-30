@@ -45,7 +45,8 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.providerInstallSubscribe
   | typeof WS_METHODS.agentSubscribeThreads
   | typeof WS_METHODS.agentSubscribeThread
-  | typeof WS_METHODS.notesSubscribe
+  | typeof WS_METHODS.calendarSubscribeDirectory
+  | typeof WS_METHODS.calendarSubscribeWeek
   | typeof WS_METHODS.subscribeAuthAccess
   | typeof WS_METHODS.subscribeServerConfig
   | typeof WS_METHODS.subscribeServerLifecycle
@@ -54,7 +55,8 @@ export type EnvironmentSubscriptionRpcTag =
 export type EnvironmentStreamCommandRpcTag =
   | typeof WS_METHODS.chatGptHandoffSubscribe
   | typeof WS_METHODS.cloudInstallRelayClient
-  | typeof WS_METHODS.serverUpdateServerWithProgress;
+  | typeof WS_METHODS.serverUpdateServerWithProgress
+  | typeof WS_METHODS.calendarGoogleConnect;
 
 export type EnvironmentStreamRpcTag =
   | EnvironmentSubscriptionRpcTag

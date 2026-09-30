@@ -1,6 +1,7 @@
 /**
- * The command palette (Mod+K): app actions, notes, agent chats, settings pages, theme and
- * appearance. It also owns the theme shortcuts, since they open its theme view.
+ * The command palette (Mod+K): calendar navigation and actions, each calendar, agent chats,
+ * settings pages, theme and appearance. It also owns the theme shortcuts, since they open its
+ * theme view.
  */
 import { useAtomValue } from "@effect/atom-react";
 import { BUILT_IN_THEMES } from "@t3tools/shared/themePalettes";
@@ -11,9 +12,7 @@ import {
   MessageSquarePlusIcon,
   MonitorIcon,
   MoonIcon,
-  NotebookPenIcon,
   PaletteIcon,
-  PlusIcon,
   SparklesIcon,
   SunIcon,
 } from "lucide-react";
@@ -35,7 +34,6 @@ import { useTheme } from "../hooks/useTheme";
 import { resolveShortcutCommand } from "../keybindings";
 import { useActiveEnvironmentId } from "../state/activeEnvironment";
 import { useAgentThreads } from "../state/agent";
-import { useNotes } from "../state/notes";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { getThemeDefinition } from "../themePalette";
 import { formatShortTimestamp } from "../timestampFormat";
@@ -48,7 +46,7 @@ import {
 } from "./CommandPalette.logic";
 import { CommandPaletteContent } from "./CommandPaletteContent";
 import { CommandPaletteResults } from "./CommandPaletteResults";
-import { useCreateNote } from "./notes/useCreateNote";
+import { useCalendarPaletteGroups } from "./calendar/useCalendarPaletteGroups";
 import { SETTINGS_SECTIONS } from "./settings/settingsSections";
 import { toggleThemeEditorForTheme } from "./settings/themeEditorStore";
 import {
@@ -287,9 +285,8 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const timestampFormat = useClientSettings((settings) => settings.timestampFormat);
   const environmentId = useActiveEnvironmentId();
-  const { notes } = useNotes(environmentId);
   const { threads } = useAgentThreads(environmentId);
-  const createNote = useCreateNote();
+  const calendarGroups = useCalendarPaletteGroups(environmentId);
   const toggleAgent = useAgentPanelStore((state) => state.toggle);
   const startNewChat = useAgentPanelStore((state) => state.startNewChat);
   const openThread = useAgentPanelStore((state) => state.openThread);
@@ -303,16 +300,6 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
 
   const rootGroups = useMemo((): CommandPaletteGroup[] => {
     const actions: CommandPaletteActionItem[] = [
-      {
-        kind: "action",
-        value: "action:new-note",
-        searchTerms: ["New note", "create write"],
-        title: "New note",
-        icon: <PlusIcon className={ITEM_ICON_CLASS} />,
-        shortcutCommand: "notes.new",
-        disabled: environmentId === null,
-        run: () => createNote(),
-      },
       {
         kind: "action",
         value: "action:new-chat",
@@ -331,16 +318,9 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
         shortcutCommand: "agent.toggle",
         run: toggleAgent,
       },
-      {
-        kind: "action",
-        value: "action:go-notes",
-        searchTerms: ["Go to Notes"],
-        title: "Go to Notes",
-        icon: <NotebookPenIcon className={ITEM_ICON_CLASS} />,
-        run: () => navigate({ to: "/notes" }),
-      },
     ];
     return [
+      ...calendarGroups,
       {
         value: "actions",
         label: "Actions",
@@ -361,20 +341,6 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
         searchOnly: true,
       },
       {
-        value: "notes",
-        label: "Notes",
-        items: notes.map((note) => ({
-          kind: "action",
-          value: `note:${note.noteId}`,
-          searchTerms: [note.title, note.body.slice(0, 500)],
-          title: note.title,
-          timestamp: formatShortTimestamp(note.updatedAt, timestampFormat),
-          icon: <NotebookPenIcon className={ITEM_ICON_CLASS} />,
-          run: () => navigate({ to: "/notes/$noteId", params: { noteId: note.noteId } }),
-        })),
-        searchOnly: true,
-      },
-      {
         value: "settings",
         label: "Settings",
         items: SETTINGS_SECTIONS.map((section) => ({
@@ -390,10 +356,8 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
       },
     ];
   }, [
-    createNote,
-    environmentId,
+    calendarGroups,
     navigate,
-    notes,
     openThread,
     startNewChat,
     themeItems,
@@ -436,7 +400,7 @@ function OpenCommandPalette({ initialView, close }: { initialView: OpenView; clo
       autoHighlight="always"
       footerActionLabel="Run"
       inputProps={{
-        placeholder: submenu ? String(submenu.title) : "Search notes, chats, and commands",
+        placeholder: submenu ? String(submenu.title) : "Search commands, calendars, and chats",
         ...(submenu
           ? {
               startAddon: (

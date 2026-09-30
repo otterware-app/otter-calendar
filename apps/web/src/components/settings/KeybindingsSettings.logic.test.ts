@@ -19,12 +19,22 @@ import {
 describe("KeybindingsSettings.logic", () => {
   it("lists the app commands with editable defaults", () => {
     const rows = buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, "");
-    for (const command of ["agent.toggle", "agent.new", "notes.new", "commandPalette.toggle"]) {
+    for (const command of [
+      "agent.toggle",
+      "agent.new",
+      "calendar.create",
+      "commandPalette.toggle",
+    ]) {
       expect(rows.find((row) => row.command === command)).toMatchObject({
         source: "Default",
         conflicts: [],
       });
     }
+  });
+
+  it("labels calendar commands in words", () => {
+    expect(commandLabel("calendar.goToDate")).toBe("Calendar: Go to Date");
+    expect(commandLabel("calendar.view.custom")).toBe("Calendar: Custom Days View");
   });
 
   it.each(["agent", "new chat", "toggle panel"])("finds the agent shortcuts with %s", (query) => {
@@ -202,7 +212,7 @@ describe("KeybindingsSettings.logic", () => {
 
   it("builds command options from all static commands", () => {
     expect(buildKeybindingCommandOptions([])).toEqual(
-      expect.arrayContaining(["agent.toggle", "agent.new", "notes.new", "sidebar.toggle"]),
+      expect.arrayContaining(["agent.toggle", "agent.new", "calendar.create", "sidebar.toggle"]),
     );
   });
 
@@ -217,7 +227,7 @@ describe("KeybindingsSettings.logic", () => {
     const rows = buildKeybindingRows(
       [
         {
-          command: "notes.new",
+          command: "calendar.create",
           shortcut: {
             key: "n",
             modKey: true,
@@ -242,7 +252,7 @@ describe("KeybindingsSettings.logic", () => {
     const rows = buildKeybindingRows(
       [
         {
-          command: "notes.new",
+          command: "calendar.create",
           shortcut: {
             key: "n",
             modKey: true,
@@ -275,11 +285,11 @@ describe("KeybindingsSettings.logic", () => {
       "",
     );
 
-    const notesRow = rows.find((row) => row.command === "notes.new");
-    expect(notesRow?.conflicts).toEqual(["Agent: New Chat"]);
+    const createRow = rows.find((row) => row.command === "calendar.create");
+    expect(createRow?.conflicts).toEqual(["Agent: New Chat"]);
     expect(
       keybindingConflictLabels(rows, {
-        rowId: notesRow?.id ?? "",
+        rowId: createRow?.id ?? "",
         key: "mod+n",
         when: "",
       }),

@@ -189,13 +189,13 @@ describe("environment RPC", () => {
     Effect.gen(function* () {
       const subscriptions: string[] = [];
       const firstClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("first");
           return Stream.never;
         },
       } as unknown as WsRpcProtocolClient;
       const secondClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("second");
           return Stream.never;
         },
@@ -213,7 +213,7 @@ describe("environment RPC", () => {
         return yield* Effect.die(new Error(`Expected ${count} durable subscriptions.`));
       });
 
-      const subscriptionFiber = yield* subscribe(WS_METHODS.notesSubscribe, {}).pipe(
+      const subscriptionFiber = yield* subscribe(WS_METHODS.calendarSubscribeDirectory, {}).pipe(
         Stream.runDrain,
         Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
         Effect.forkChild,
@@ -299,7 +299,7 @@ describe("environment RPC", () => {
     Effect.gen(function* () {
       const subscriptions: string[] = [];
       const firstClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("first");
           return Stream.fail(
             new RpcClientError.RpcClientError({
@@ -312,14 +312,14 @@ describe("environment RPC", () => {
         },
       } as unknown as WsRpcProtocolClient;
       const secondClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("second");
           return Stream.never;
         },
       } as unknown as WsRpcProtocolClient;
       const { activeSession, retryCount, supervisor } = yield* makeHarness();
 
-      const subscriptionFiber = yield* subscribe(WS_METHODS.notesSubscribe, {}).pipe(
+      const subscriptionFiber = yield* subscribe(WS_METHODS.calendarSubscribeDirectory, {}).pipe(
         Stream.runDrain,
         Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
         Effect.forkChild,
@@ -345,12 +345,12 @@ describe("environment RPC", () => {
     Effect.gen(function* () {
       const domainError = new Error("terminal subscription rejected");
       const client = {
-        [WS_METHODS.notesSubscribe]: () => Stream.fail(domainError),
+        [WS_METHODS.calendarSubscribeDirectory]: () => Stream.fail(domainError),
       } as unknown as WsRpcProtocolClient;
       const { activeSession, retryCount, supervisor } = yield* makeHarness();
 
       yield* SubscriptionRef.set(activeSession, Option.some(session(client)));
-      const error = yield* subscribe(WS_METHODS.notesSubscribe, {}).pipe(
+      const error = yield* subscribe(WS_METHODS.calendarSubscribeDirectory, {}).pipe(
         Stream.runDrain,
         Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
         Effect.flip,
@@ -367,13 +367,13 @@ describe("environment RPC", () => {
       const subscriptions: string[] = [];
       const observedFailures: Error[] = [];
       const firstClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("first");
           return Stream.fail(domainError);
         },
       } as unknown as WsRpcProtocolClient;
       const secondClient = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           subscriptions.push("second");
           return Stream.never;
         },
@@ -382,7 +382,7 @@ describe("environment RPC", () => {
 
       yield* SubscriptionRef.set(activeSession, Option.some(session(firstClient)));
       const subscriptionFiber = yield* subscribe(
-        WS_METHODS.notesSubscribe,
+        WS_METHODS.calendarSubscribeDirectory,
         {},
         {
           onExpectedFailure: (cause) =>
@@ -419,7 +419,7 @@ describe("environment RPC", () => {
       const subscriptionCount = yield* Ref.make(0);
       const expectedFailureCount = yield* Ref.make(0);
       const client = {
-        [WS_METHODS.notesSubscribe]: () =>
+        [WS_METHODS.calendarSubscribeDirectory]: () =>
           Stream.unwrap(
             Ref.getAndUpdate(subscriptionCount, (count) => count + 1).pipe(
               Effect.map((count) => (count === 0 ? Stream.fail(domainError) : Stream.never)),
@@ -430,7 +430,7 @@ describe("environment RPC", () => {
 
       yield* SubscriptionRef.set(activeSession, Option.some(session(client)));
       const subscriptionFiber = yield* subscribe(
-        WS_METHODS.notesSubscribe,
+        WS_METHODS.calendarSubscribeDirectory,
         {},
         {
           onExpectedFailure: () => Ref.update(expectedFailureCount, (count) => count + 1),
@@ -475,7 +475,7 @@ describe("environment RPC", () => {
         let streams = 0;
         const observedDefects: unknown[] = [];
         const client = {
-          [WS_METHODS.notesSubscribe]: () => {
+          [WS_METHODS.calendarSubscribeDirectory]: () => {
             streams += 1;
             return where === "stream" ? Stream.die(defect) : Stream.never;
           },
@@ -484,7 +484,7 @@ describe("environment RPC", () => {
 
         yield* SubscriptionRef.set(activeSession, Option.some(session(client)));
         const exit = yield* subscribeDynamicWithSession(
-          WS_METHODS.notesSubscribe,
+          WS_METHODS.calendarSubscribeDirectory,
           () =>
             Effect.sync(() => {
               inputs += 1;
@@ -526,7 +526,7 @@ describe("environment RPC", () => {
       const observedDefects: unknown[] = [];
       let inputs = 0;
       const client = {
-        [WS_METHODS.notesSubscribe]: () => {
+        [WS_METHODS.calendarSubscribeDirectory]: () => {
           observations.push("stream");
           return Stream.fail(new Error("subscription not ready"));
         },
@@ -534,7 +534,7 @@ describe("environment RPC", () => {
       const { activeSession, supervisor } = yield* makeHarness();
       yield* SubscriptionRef.set(activeSession, Option.some(session(client)));
       const fiber = yield* subscribeDynamicWithSession(
-        WS_METHODS.notesSubscribe,
+        WS_METHODS.calendarSubscribeDirectory,
         () =>
           Effect.sync(() => {
             inputs += 1;

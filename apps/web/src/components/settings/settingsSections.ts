@@ -1,6 +1,7 @@
 import {
   ActivityIcon,
   BotIcon,
+  CalendarDaysIcon,
   KeyboardIcon,
   Link2Icon,
   PaletteIcon,
@@ -11,6 +12,7 @@ import {
 
 export type SettingsPath =
   | "/settings/general"
+  | "/settings/calendar"
   | "/settings/appearance"
   | "/settings/keybindings"
   | "/settings/providers"
@@ -25,6 +27,7 @@ export const SETTINGS_SECTIONS: ReadonlyArray<{
   readonly icon: LucideIcon;
 }> = [
   { to: "/settings/general", label: "General", icon: Settings2Icon },
+  { to: "/settings/calendar", label: "Calendar", icon: CalendarDaysIcon },
   { to: "/settings/appearance", label: "Appearance", icon: PaletteIcon },
   { to: "/settings/keybindings", label: "Keybindings", icon: KeyboardIcon },
   { to: "/settings/providers", label: "Agents", icon: BotIcon },

@@ -1,6 +1,6 @@
 /**
  * How an agent conversation reads in every client: each turn is the user's prompt, then what
- * the agent did as one-line steps ("Ran `ls`", "Read notes.ts", "Create note"), then its answer.
+ * the agent did as one-line steps ("Ran `ls`", "Read plan.md", "Created event"), then its answer.
  * Steps from one integration that follow each other form a group, and once a turn finishes,
  * everything before the answer folds behind "Worked for 12s".
  *
@@ -24,7 +24,7 @@ export interface AgentStep {
   /** The turn item the step comes from. */
   readonly id: string;
   readonly kind: AgentStepKind;
-  /** What it did, in words: "Create note", "Ran `git status`", "Read notes.ts". */
+  /** What it did, in words: "Created event", "Ran `git status`", "Read plan.md". */
   readonly title: string;
   /** The integration (MCP server) it used: the app itself, or another server by name. */
   readonly source?: string;
@@ -73,7 +73,7 @@ export interface AgentTurnView {
 const AGENT_STEP_OUTPUT_CHARS = 4_000;
 const DETAIL_CHARS = 2_000;
 
-/** `notes_create` / `getThread` → "Notes create" / "Get thread". */
+/** `free_time` / `getThread` → "Free time" / "Get thread". */
 function sentenceCase(name: string): string {
   const words = name
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -166,14 +166,79 @@ const COLLECTION_VERBS: Readonly<Record<string, string>> = {
   find: "Find",
 };
 
+/** Calendar tools read as what they did: `calendar_list_events` → "Listed events". */
+const CALENDAR_PAST_TENSE: Readonly<Record<string, string>> = {
+  list: "Listed",
+  get: "Read",
+  read: "Read",
+  create: "Created",
+  add: "Added",
+  update: "Updated",
+  edit: "Edited",
+  move: "Moved",
+  reschedule: "Rescheduled",
+  delete: "Deleted",
+  remove: "Removed",
+  cancel: "Cancelled",
+  restore: "Restored",
+  search: "Searched",
+  find: "Found",
+  check: "Checked",
+  suggest: "Suggested",
+  respond: "Responded to",
+  rsvp: "Responded to",
+  sync: "Synced",
+  undo: "Undid",
+  redo: "Redid",
+  set: "Set",
+  show: "Showed",
+  hide: "Hid",
+};
+
+/** What a calendar verb acts on when the tool name does not say: `calendar_respond`. */
+const CALENDAR_DEFAULT_OBJECT: Readonly<Record<string, string>> = {
+  list: "calendars",
+  respond: "invitation",
+  rsvp: "invitation",
+  sync: "calendars",
+  undo: "last change",
+  redo: "last change",
+};
+
 /**
- * The app's tools are named `<domain>_<verb>` (`notes_create`); they read as "Create note",
- * "List notes". Anything else reads as a sentence of its name.
+ * `calendar_<verb>_<object>` (or `calendar_<object>_<verb>`) → "Listed events", "Found free
+ * time"; null when the name has no known verb.
+ */
+function calendarToolTitle(words: ReadonlyArray<string>): string | null {
+  const [first, ...rest] = words;
+  const last = rest.at(-1);
+  const verbFirst = first !== undefined && CALENDAR_PAST_TENSE[first] !== undefined;
+  const verb = verbFirst ? first : last !== undefined && CALENDAR_PAST_TENSE[last] ? last : null;
+  if (verb === null) return null;
+  const past = CALENDAR_PAST_TENSE[verb]!;
+  // `respond_to_invitation` → "Responded to invitation", not "Responded to to invitation".
+  let object = (verbFirst ? rest : [first!, ...rest.slice(0, -1)]).join(" ");
+  if (past.endsWith(" to")) object = object.replace(/^to /, "");
+  const noun = object.length > 0 ? object : CALENDAR_DEFAULT_OBJECT[verb];
+  return noun === undefined ? past : `${past} ${noun}`;
+}
+
+/**
+ * The app's tools are named `<domain>_<verb>` (`accounts_list`); they read as "List accounts",
+ * "Read account". Calendar tools (`calendar_*`) read in the past tense: "Created event".
+ * Anything else reads as a sentence of its name.
  */
 export function appToolTitle(tool: string): string {
-  const words = tool.split(/[_\-.]+/).filter((word) => word.length > 0);
-  const verb = words.at(-1)?.toLowerCase();
-  const noun = words.slice(0, -1).join(" ").toLowerCase();
+  const words = tool
+    .split(/[_\-.]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.toLowerCase());
+  if (words[0] === "calendar" && words.length > 1) {
+    const title = calendarToolTitle(words.slice(1));
+    if (title !== null) return title;
+  }
+  const verb = words.at(-1);
+  const noun = words.slice(0, -1).join(" ");
   if (verb !== undefined && noun.length > 0) {
     const single = SINGLE_ITEM_VERBS[verb];
     if (single !== undefined) return `${single} ${noun.replace(/s$/, "")}`;

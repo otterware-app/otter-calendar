@@ -23,19 +23,19 @@ import {
 describe("describeAgentStep", () => {
   it("reads the app's own tools by their titles, from either provider", () => {
     const claude = describeAgentStep(
-      dynamicTool("a", 1, `mcp__${BRAND.slug}__notes_create`, { title: "Groceries" }),
+      dynamicTool("a", 1, `mcp__${BRAND.slug}__calendar_create_event`, { title: "Standup" }),
     );
     const codex = describeAgentStep(
-      dynamicTool("b", 1, `${BRAND.slug.replace(/-/g, "_")}.notes_list`),
+      dynamicTool("b", 1, `${BRAND.slug.replace(/-/g, "_")}.calendar_list_events`),
     );
 
     expect(claude).toMatchObject({
       kind: "tool",
-      title: "Create note",
+      title: "Created event",
       source: BRAND.displayName,
-      detail: '{"title":"Groceries"}',
+      detail: '{"title":"Standup"}',
     });
-    expect(codex).toMatchObject({ title: "List notes", source: BRAND.displayName });
+    expect(codex).toMatchObject({ title: "Listed events", source: BRAND.displayName });
   });
 
   it("names other MCP servers by their title-cased name", () => {
@@ -94,7 +94,7 @@ describe("describeAgentStep", () => {
       item("dynamic_tool", {
         id: "d",
         ordinal: 1,
-        toolName: `mcp__${BRAND.slug}__notes_list`,
+        toolName: `mcp__${BRAND.slug}__calendar_list_events`,
         input: {},
         output: [{ type: "text", text: "x".repeat(10_000) }],
       }),
@@ -105,10 +105,22 @@ describe("describeAgentStep", () => {
 
 describe("appToolTitle", () => {
   it("puts the verb first and names one item for single-item verbs", () => {
-    expect(appToolTitle("notes_create")).toBe("Create note");
-    expect(appToolTitle("notes_get")).toBe("Read note");
-    expect(appToolTitle("notes_search")).toBe("Search notes");
+    expect(appToolTitle("accounts_create")).toBe("Create account");
+    expect(appToolTitle("accounts_get")).toBe("Read account");
+    expect(appToolTitle("accounts_search")).toBe("Search accounts");
     expect(appToolTitle("summarize")).toBe("Summarize");
+  });
+
+  it("reads calendar tools as what they did", () => {
+    expect(appToolTitle("calendar_list_events")).toBe("Listed events");
+    expect(appToolTitle("calendar_create_event")).toBe("Created event");
+    expect(appToolTitle("calendar_find_free_time")).toBe("Found free time");
+    expect(appToolTitle("calendar_get_event")).toBe("Read event");
+    expect(appToolTitle("calendar_respond")).toBe("Responded to invitation");
+    expect(appToolTitle("calendar_respond_to_invitation")).toBe("Responded to invitation");
+    expect(appToolTitle("calendar_list_accounts")).toBe("Listed accounts");
+    expect(appToolTitle("calendar_events_search")).toBe("Searched events");
+    expect(appToolTitle("calendar_overview")).toBe("Calendar overview");
   });
 });
 
@@ -118,24 +130,24 @@ describe("presentAgentTurns", () => {
       detail({
         turns: [turn({ turnId: TURN_1 })],
         items: [
-          userMessage("u", 0, "Add a note"),
+          userMessage("u", 0, "Add a meeting"),
           assistantMessage("m1", 1, "Let me look first."),
-          dynamicTool("s1", 2, `mcp__${BRAND.slug}__notes_list`),
-          dynamicTool("s2", 3, `mcp__${BRAND.slug}__notes_create`),
+          dynamicTool("s1", 2, `mcp__${BRAND.slug}__calendar_find_free_time`),
+          dynamicTool("s2", 3, `mcp__${BRAND.slug}__calendar_create_event`),
           item("reasoning", { id: "r", ordinal: 4, text: "…", streaming: false }),
           assistantMessage("m2", 5, "Added it."),
         ],
       }),
     );
 
-    expect(view?.prompt).toEqual({ id: "u", text: "Add a note" });
+    expect(view?.prompt).toEqual({ id: "u", text: "Add a meeting" });
     expect(view?.stepCount).toBe(2);
     expect(view?.foldable).toBe(true);
     expect(view?.work.map((block) => block.type)).toEqual(["text", "group"]);
     const group = view?.work[1];
     expect(group?.type === "group" && group.steps.map((step) => step.title)).toEqual([
-      "List notes",
-      "Create note",
+      "Found free time",
+      "Created event",
     ]);
     expect(view?.answer).toEqual([{ type: "text", id: "m2", text: "Added it.", streaming: false }]);
   });

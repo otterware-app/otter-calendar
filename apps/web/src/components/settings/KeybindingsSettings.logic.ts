@@ -274,7 +274,19 @@ export function buildKeybindingCommandOptions(
 const COMMAND_LABELS: Partial<Record<KeybindingCommand, string>> = {
   "agent.toggle": "Agent: Toggle Panel",
   "agent.new": "Agent: New Chat",
-  "notes.new": "Notes: New Note",
+  "calendar.today": "Calendar: Go to Today",
+  "calendar.next": "Calendar: Next Period",
+  "calendar.previous": "Calendar: Previous Period",
+  "calendar.view.day": "Calendar: Day View",
+  "calendar.view.week": "Calendar: Week View",
+  "calendar.view.month": "Calendar: Month View",
+  "calendar.view.agenda": "Calendar: Agenda View",
+  "calendar.view.custom": "Calendar: Custom Days View",
+  "calendar.create": "Calendar: New Event",
+  "calendar.search": "Calendar: Search Events",
+  "calendar.goToDate": "Calendar: Go to Date",
+  "calendar.undo": "Calendar: Undo",
+  "calendar.redo": "Calendar: Redo",
 };
 
 export function commandLabel(command: KeybindingCommand): string {

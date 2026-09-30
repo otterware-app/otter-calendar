@@ -39,10 +39,6 @@
       "types": "./src/state/agent.ts",
       "default": "./src/state/agent.ts"
     },
-    "./state/notes": {
-      "types": "./src/state/notes.ts",
-      "default": "./src/state/notes.ts"
-    },
     "./state/auth": {
       "types": "./src/state/auth.ts",
       "default": "./src/state/auth.ts"
@@ -74,6 +70,30 @@
     "./state/session": {
       "types": "./src/state/session.ts",
       "default": "./src/state/session.ts"
+    },
+    "./state/calendar": {
+      "types": "./src/state/calendar.ts",
+      "default": "./src/state/calendar.ts"
+    },
+    "./calendar/layout": {
+      "types": "./src/calendar/layout.ts",
+      "default": "./src/calendar/layout.ts"
+    },
+    "./calendar/chunks": {
+      "types": "./src/calendar/chunks.ts",
+      "default": "./src/calendar/chunks.ts"
+    },
+    "./calendar/days": {
+      "types": "./src/calendar/days.ts",
+      "default": "./src/calendar/days.ts"
+    },
+    "./calendar/format": {
+      "types": "./src/calendar/format.ts",
+      "default": "./src/calendar/format.ts"
+    },
+    "./calendar/optimistic": {
+      "types": "./src/calendar/optimistic.ts",
+      "default": "./src/calendar/optimistic.ts"
     }
   },
   "scripts": {

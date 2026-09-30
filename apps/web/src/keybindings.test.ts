@@ -86,14 +86,14 @@ describe("default app shortcuts", () => {
     );
   });
 
-  it("leaves mod+n to text fields so a new note never steals typing", () => {
+  it("leaves mod+n to text fields so a new event never steals typing", () => {
     const input = event({ key: "n", metaKey: true });
     assert.strictEqual(
       resolveShortcutCommand(input, DEFAULT_RESOLVED_KEYBINDINGS, {
         platform: "MacIntel",
         context: { editableFocus: false },
       }),
-      "notes.new",
+      "calendar.create",
     );
     assert.isNull(
       resolveShortcutCommand(input, DEFAULT_RESOLVED_KEYBINDINGS, {
@@ -144,7 +144,7 @@ describe("rule precedence", () => {
       { shortcut: modShortcut("n"), command: "agent.new" },
       {
         shortcut: modShortcut("n"),
-        command: "notes.new",
+        command: "calendar.create",
         whenAst: whenNot(whenIdentifier("editableFocus")),
       },
     ]);
@@ -154,7 +154,7 @@ describe("rule precedence", () => {
         platform: "MacIntel",
         context: { editableFocus: false },
       }),
-      "notes.new",
+      "calendar.create",
     );
     assert.strictEqual(
       resolveShortcutCommand(input, keybindings, {
@@ -168,10 +168,10 @@ describe("rule precedence", () => {
   it("gives no label to a command shadowed by a later rule on the same keys", () => {
     const keybindings = compile([
       { shortcut: modShortcut("o", { shiftKey: true }), command: "agent.new" },
-      { shortcut: modShortcut("o", { shiftKey: true }), command: "notes.new" },
+      { shortcut: modShortcut("o", { shiftKey: true }), command: "calendar.create" },
     ]);
     assert.isNull(shortcutLabelForCommand(keybindings, "agent.new", "MacIntel"));
-    assert.strictEqual(shortcutLabelForCommand(keybindings, "notes.new", "MacIntel"), "⇧⌘O");
+    assert.strictEqual(shortcutLabelForCommand(keybindings, "calendar.create", "MacIntel"), "⇧⌘O");
   });
 
   it("respects the when-context while resolving labels", () => {
@@ -179,21 +179,21 @@ describe("rule precedence", () => {
       { shortcut: modShortcut("n"), command: "agent.new" },
       {
         shortcut: modShortcut("n"),
-        command: "notes.new",
-        whenAst: whenIdentifier("notesFocus"),
+        command: "calendar.create",
+        whenAst: whenIdentifier("calendarFocus"),
       },
     ]);
     assert.strictEqual(
       shortcutLabelForCommand(keybindings, "agent.new", {
         platform: "Linux",
-        context: { notesFocus: false },
+        context: { calendarFocus: false },
       }),
       "Ctrl+N",
     );
     assert.isNull(
       shortcutLabelForCommand(keybindings, "agent.new", {
         platform: "Linux",
-        context: { notesFocus: true },
+        context: { calendarFocus: true },
       }),
     );
   });
@@ -251,7 +251,7 @@ describe("keyboard layouts", () => {
   it("matches Option-modified and non-Latin letters by physical key", () => {
     const keybindings = compile([
       { shortcut: modShortcut("b", { altKey: true }), command: "agent.toggle" },
-      { shortcut: modShortcut("d"), command: "notes.new" },
+      { shortcut: modShortcut("d"), command: "calendar.create" },
     ]);
     assert.strictEqual(
       resolveShortcutCommand(
@@ -265,12 +265,12 @@ describe("keyboard layouts", () => {
       resolveShortcutCommand(event({ key: "в", code: "KeyD", metaKey: true }), keybindings, {
         platform: "MacIntel",
       }),
-      "notes.new",
+      "calendar.create",
     );
   });
 
   it("follows the letter a Latin layout types, not the physical key", () => {
-    const keybindings = compile([{ shortcut: modShortcut("d"), command: "notes.new" }]);
+    const keybindings = compile([{ shortcut: modShortcut("d"), command: "calendar.create" }]);
     assert.isNull(
       resolveShortcutCommand(event({ key: "a", code: "KeyD", metaKey: true }), keybindings, {
         platform: "MacIntel",
@@ -280,7 +280,7 @@ describe("keyboard layouts", () => {
       resolveShortcutCommand(event({ key: "d", code: "KeyL", metaKey: true }), keybindings, {
         platform: "MacIntel",
       }),
-      "notes.new",
+      "calendar.create",
     );
   });
 

@@ -370,7 +370,8 @@ export type CalendarDeleteEventInput = typeof CalendarDeleteEventInput.Type;
 export const CalendarRespondInput = Schema.Struct({
   calendarId: CalendarId,
   eventId: CalendarEventId,
-  response: Schema.Literals(["accepted", "declined", "tentative"]),
+  /** `needsAction` withdraws an answer (the undo of a first RSVP). */
+  response: CalendarResponseStatus,
   /** `this` answers for one occurrence, `all` for the whole series. */
   scope: Schema.optional(Schema.Literals(["this", "all"])),
 });

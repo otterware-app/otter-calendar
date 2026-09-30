@@ -18,6 +18,7 @@ import { getLocalStorageItem, removeLocalStorageItem } from "../hooks/useLocalSt
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import { isEditableFocused } from "../lib/editableFocus";
 import { cn, isMacPlatform } from "../lib/utils";
+import { useActiveEnvironmentId } from "../state/activeEnvironment";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import {
   PanelAnimationSuppressionProvider,
@@ -25,7 +26,8 @@ import {
   usePanelNavigationSuppression,
 } from "../panelAnimations";
 import { AppSidebar } from "./AppSidebar";
-import { useCreateNote } from "./notes/useCreateNote";
+import { CalendarPromptHost } from "./calendar/CalendarPromptHost";
+import { GoogleConnectDialog } from "./calendar/GoogleConnectDialog";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { isSettingsPage, MainAppLocationTracker } from "./sidebar/mainAppLocation";
@@ -103,15 +105,15 @@ function SidebarControl() {
 }
 
 /**
- * App-wide shortcuts: the sidebar, back/forward, the agent panel, and a new note. Captured
- * before focused editors so a chord like Mod+B toggles the sidebar from anywhere.
+ * App-wide shortcuts: the sidebar, back/forward, and the agent panel. Captured before focused
+ * editors so a chord like Mod+B toggles the sidebar from anywhere. The calendar page handles
+ * its own shortcuts while it is open.
  */
 function AppShortcuts() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { toggleSidebar } = useSidebar();
   const toggleAgent = useAgentPanelStore((state) => state.toggle);
   const startNewChat = useAgentPanelStore((state) => state.startNewChat);
-  const createNote = useCreateNote();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -137,8 +139,6 @@ function AppShortcuts() {
             return toggleAgent;
           case "agent.new":
             return startNewChat;
-          case "notes.new":
-            return () => void createNote();
           default:
             return null;
         }
@@ -150,7 +150,7 @@ function AppShortcuts() {
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [createNote, keybindings, startNewChat, toggleAgent, toggleSidebar]);
+  }, [keybindings, startNewChat, toggleAgent, toggleSidebar]);
 
   return null;
 }
@@ -164,6 +164,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const routePanelAnimationsActive = panelAnimationsActive && !panelAnimationsSuppressed;
   const isOnSettings = isSettingsPage(pathname);
   const agentPanelOpen = useAgentPanelStore((state) => state.open);
+  const activeEnvironmentId = useActiveEnvironmentId();
   const isMacosDesktop = isElectron && isMacPlatform(navigator.platform);
   const [sidebarWidth, setSidebarWidth] = useState(readInitialSidebarWidth);
   // Subscribed rather than read once: the clamp must track live window size.
@@ -262,6 +263,8 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         ) : null}
         <SidebarControl />
         <AppShortcuts />
+        <GoogleConnectDialog environmentId={activeEnvironmentId} />
+        <CalendarPromptHost />
         <MainAppLocationTracker />
       </SidebarProvider>
     </PanelAnimationSuppressionProvider>

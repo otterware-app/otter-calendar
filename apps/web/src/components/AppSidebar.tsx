@@ -1,15 +1,15 @@
 /**
- * The main sidebar: the app's pages, recent agent chats (they open the agent panel), the
- * environment switcher once more than one environment is connected, and settings, account,
- * and connection status at the bottom.
+ * The main sidebar: the app's pages, the calendar's mini month and calendars (on the calendar
+ * page), recent agent chats (they open the agent panel), the environment switcher once more
+ * than one environment is connected, and settings, account, and connection status at the bottom.
  */
 import { connectionStatusText } from "@t3tools/client-runtime/connection";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
+  CalendarDaysIcon,
   ChevronsUpDownIcon,
   MessageSquarePlusIcon,
-  NotebookPenIcon,
   SettingsIcon,
 } from "lucide-react";
 import { lazy, Suspense, useCallback } from "react";
@@ -19,6 +19,7 @@ import { isElectron } from "../env";
 import { useActiveEnvironmentId, setActiveEnvironmentId } from "../state/activeEnvironment";
 import { useAgentThreads } from "../state/agent";
 import { useEnvironments } from "../state/environments";
+import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { ConnectionStatusDot, connectionPhaseDotClassName } from "./ConnectionStatusDot";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarProviderUpdatePill } from "./sidebar/SidebarProviderUpdatePill";
@@ -48,7 +49,7 @@ const T3ConnectSidebarAvatar = lazy(() =>
 
 const RECENT_CHAT_COUNT = 8;
 
-const NAV_ITEMS = [{ to: "/notes", label: "Notes", icon: NotebookPenIcon }] as const;
+const NAV_ITEMS = [{ to: "/calendar", label: "Calendar", icon: CalendarDaysIcon }] as const;
 
 function useCloseMobileSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -189,6 +190,7 @@ export function AppSidebar() {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+        {pathname === "/calendar" ? <CalendarSidebar /> : null}
         <RecentChats />
         <EnvironmentSwitcher />
       </SidebarContent>
