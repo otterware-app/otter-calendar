@@ -24,7 +24,10 @@ import { Tool, Toolkit } from "effect/unstable/ai";
 export const LIST_EVENTS_LIMIT = 300;
 
 const TIME_NOTE =
-  "Times are ISO 8601; without an offset they are in the user's time zone (see calendar_list_accounts).";
+  "Times are ISO 8601; without an offset they are in timeZone, else the user's time zone. Pass timeZone as the zone the app's context block names, so times read the way the user sees them.";
+
+/** The zone to show times in and read offset-less times in: the one the user looks at. */
+const ViewerTimeZone = Schema.optional(Schema.String);
 
 const EventEntry = Schema.Struct({
   calendarId: CalendarId,
@@ -66,7 +69,8 @@ const EventDetail = Schema.Struct({
 
 const ListAccountsTool = Tool.make("calendar_list_accounts", {
   description:
-    "List the user's calendar accounts and their calendars (ids, names, colors, whether shown, access role), with the user's time zone and working hours. Hidden calendars are not shown in the app but can still be read.",
+    "List the user's calendar accounts and their calendars (ids, names, colors, whether shown, access role), with the user's time zone and working hours. timeZone follows each device unless the user fixed one; pass the zone the app's context block names. Hidden calendars are not shown in the app but can still be read.",
+  parameters: Schema.Struct({ timeZone: ViewerTimeZone }),
   success: Schema.Struct({
     timeZone: Schema.String,
     workingHours: Schema.Struct({
@@ -109,6 +113,7 @@ const ListEventsTool = Tool.make("calendar_list_events", {
     end: Schema.String,
     calendarIds: Schema.optional(Schema.Array(CalendarId)),
     query: Schema.optional(Schema.String),
+    timeZone: ViewerTimeZone,
   }),
   success: Schema.Struct({
     timeZone: Schema.String,
@@ -129,6 +134,7 @@ const SearchEventsTool = Tool.make("calendar_search_events", {
   parameters: Schema.Struct({
     query: Schema.String,
     limit: Schema.optional(Schema.Number),
+    timeZone: ViewerTimeZone,
   }),
   success: Schema.Struct({ timeZone: Schema.String, events: Schema.Array(EventEntry) }),
   failure: CalendarError,
@@ -142,7 +148,11 @@ const SearchEventsTool = Tool.make("calendar_search_events", {
 const GetEventTool = Tool.make("calendar_get_event", {
   description:
     "Read one event or occurrence in full: description, guests and their answers, video call link, and how it repeats.",
-  parameters: Schema.Struct({ calendarId: CalendarId, eventId: CalendarEventId }),
+  parameters: Schema.Struct({
+    calendarId: CalendarId,
+    eventId: CalendarEventId,
+    timeZone: ViewerTimeZone,
+  }),
   success: EventDetail,
   failure: CalendarError,
 })
@@ -242,6 +252,7 @@ const FindFreeTimeTool = Tool.make("calendar_find_free_time", {
     calendarIds: Schema.optional(Schema.Array(CalendarId)),
     accountIds: Schema.optional(Schema.Array(Schema.String)),
     workingHoursOnly: Schema.optional(Schema.Boolean),
+    timeZone: ViewerTimeZone,
   }),
   success: Schema.Struct({
     timeZone: Schema.String,

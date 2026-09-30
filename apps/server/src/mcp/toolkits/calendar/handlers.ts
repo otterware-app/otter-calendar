@@ -36,8 +36,12 @@ const WEEKDAY_NAMES = [
 
 const invalid = (detail: string) => new CalendarError({ code: "invalid", detail });
 
-/** The zone the user sees the calendar in: the preferences', else the server's. */
-function userZone(directory: CalendarDirectory): string {
+/**
+ * The zone the user sees the calendar in: the one the agent passes (from the app's context,
+ * since the preference may follow each device), else the preferences', else the server's.
+ */
+function userZone(directory: CalendarDirectory, viewer?: string): string {
+  if (viewer !== undefined && isValidTimeZone(viewer)) return viewer;
   const zone = directory.preferences.timeZone;
   return zone !== null && isValidTimeZone(zone) ? zone : systemTimeZone();
 }
@@ -138,20 +142,20 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
   Effect.gen(function* () {
     const calendar = yield* CalendarService;
 
-    const withDetail = (event: CalendarEventDetails | undefined) =>
+    const withDetail = (event: CalendarEventDetails | undefined, viewer?: string) =>
       calendar.getDirectory.pipe(
         Effect.map((directory) =>
           event === undefined
             ? {}
-            : { event: detailOf(event, calendarNames(directory), userZone(directory)) },
+            : { event: detailOf(event, calendarNames(directory), userZone(directory, viewer)) },
         ),
       );
 
     return {
-      calendar_list_accounts: () =>
+      calendar_list_accounts: ({ timeZone }) =>
         calendar.getDirectory.pipe(
           Effect.map((directory) => ({
-            timeZone: userZone(directory),
+            timeZone: userZone(directory, timeZone),
             workingHours: {
               start: formatMinutes(directory.preferences.workingHours.start),
               end: formatMinutes(directory.preferences.workingHours.end),
@@ -177,11 +181,11 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
           })),
         ),
 
-      calendar_list_events: ({ start, end, calendarIds, query }) =>
+      calendar_list_events: ({ start, end, calendarIds, query, timeZone }) =>
         Effect.gen(function* () {
           yield* calendar.ensureFresh;
           const directory = yield* calendar.getDirectory;
-          const zone = userZone(directory);
+          const zone = userZone(directory, timeZone);
           const instances = yield* calendar.listInstances({
             start: yield* parseToolTime(start, zone),
             end: yield* parseToolTime(end, zone),
@@ -206,12 +210,12 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
           };
         }),
 
-      calendar_search_events: ({ query, limit }) =>
+      calendar_search_events: ({ query, limit, timeZone }) =>
         Effect.gen(function* () {
           if (query.trim() === "") return yield* invalid("Search for at least one character.");
           yield* calendar.ensureFresh;
           const directory = yield* calendar.getDirectory;
-          const zone = userZone(directory);
+          const zone = userZone(directory, timeZone);
           const found = yield* calendar.search({
             query: query.trim().slice(0, 200),
             limit: Math.max(1, Math.min(200, Math.round(limit ?? 25))),
@@ -223,12 +227,12 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
           };
         }),
 
-      calendar_get_event: (input) =>
+      calendar_get_event: ({ calendarId, eventId, timeZone }) =>
         Effect.gen(function* () {
           yield* calendar.ensureFresh;
-          const details = yield* calendar.getEvent(input);
+          const details = yield* calendar.getEvent({ calendarId, eventId });
           const directory = yield* calendar.getDirectory;
-          return detailOf(details, calendarNames(directory), userZone(directory));
+          return detailOf(details, calendarNames(directory), userZone(directory, timeZone));
         }),
 
       calendar_create_event: ({ calendarId, start, end, allDay, timeZone, ...fields }) =>
@@ -256,7 +260,7 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
             };
           }
           const result = yield* calendar.createEvent({ calendarId, time, ...fields });
-          return yield* withDetail(result.event);
+          return yield* withDetail(result.event, timeZone);
         }),
 
       calendar_update_event: ({ calendarId, eventId, start, end, allDay, timeZone, ...fields }) =>
@@ -302,7 +306,7 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
             ...(time !== undefined ? { time } : {}),
             ...fields,
           });
-          return yield* withDetail(result.event);
+          return yield* withDetail(result.event, timeZone);
         }),
 
       calendar_delete_event: (input) =>
@@ -318,11 +322,12 @@ export const CalendarHandlersLive = CalendarToolkit.toLayer(
         calendarIds,
         accountIds,
         workingHoursOnly,
+        timeZone,
       }) =>
         Effect.gen(function* () {
           yield* calendar.ensureFresh;
           const directory = yield* calendar.getDirectory;
-          const zone = userZone(directory);
+          const zone = userZone(directory, timeZone);
           const fromAccounts =
             accountIds === undefined
               ? []
