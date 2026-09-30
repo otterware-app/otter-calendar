@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "../ui/button";
 import {
@@ -15,32 +15,36 @@ import { type CalendarPrompt, answerCalendarPrompt, useCalendarPrompt } from "./
 
 function PromptForm({ prompt }: { prompt: CalendarPrompt }) {
   const [value, setValue] = useState(prompt.defaultValue);
+  const formId = useId();
   const asRadios = prompt.choices.length > 2;
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        answerCalendarPrompt(value);
-      }}
-    >
+    <>
       <DialogHeader>
         <DialogTitle>{prompt.title}</DialogTitle>
         {prompt.description ? <DialogDescription>{prompt.description}</DialogDescription> : null}
       </DialogHeader>
       {asRadios ? (
-        <DialogPanel>
-          <RadioGroup
-            aria-label={prompt.title}
-            value={value}
-            onValueChange={(next) => setValue(String(next))}
+        <DialogPanel scrollFade={false}>
+          <form
+            id={formId}
+            onSubmit={(event) => {
+              event.preventDefault();
+              answerCalendarPrompt(value);
+            }}
           >
-            {prompt.choices.map((choice) => (
-              <label key={choice.value} className="flex items-center gap-2.5 text-sm">
-                <Radio value={choice.value} autoFocus={choice.value === prompt.defaultValue} />
-                {choice.label}
-              </label>
-            ))}
-          </RadioGroup>
+            <RadioGroup
+              aria-label={prompt.title}
+              value={value}
+              onValueChange={(next) => setValue(String(next))}
+            >
+              {prompt.choices.map((choice) => (
+                <label key={choice.value} className="flex items-center gap-2.5 text-sm">
+                  <Radio value={choice.value} autoFocus={choice.value === prompt.defaultValue} />
+                  {choice.label}
+                </label>
+              ))}
+            </RadioGroup>
+          </form>
         </DialogPanel>
       ) : null}
       <DialogFooter>
@@ -48,7 +52,9 @@ function PromptForm({ prompt }: { prompt: CalendarPrompt }) {
           Cancel
         </Button>
         {asRadios ? (
-          <Button type="submit">{prompt.confirmLabel}</Button>
+          <Button type="submit" form={formId}>
+            {prompt.confirmLabel}
+          </Button>
         ) : (
           prompt.choices.map((choice) => (
             <Button
@@ -62,7 +68,7 @@ function PromptForm({ prompt }: { prompt: CalendarPrompt }) {
           ))
         )}
       </DialogFooter>
-    </form>
+    </>
   );
 }
 

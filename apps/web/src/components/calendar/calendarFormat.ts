@@ -8,7 +8,7 @@ import {
   formatZoneName,
 } from "@t3tools/client-runtime/calendar/format";
 import type { CalendarAccount, CalendarEventInstance } from "@t3tools/contracts";
-import { DAY_MS, toZoned } from "@t3tools/shared/calendar/time";
+import { DAY_MS, civilDate, toZoned, type DayNumber } from "@t3tools/shared/calendar/time";
 
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 
@@ -32,8 +32,22 @@ export function accountStatusLabel(account: CalendarAccount): string {
     case "syncing":
       return "Syncing…";
     case "ok":
-      return account.provider === "demo" ? "Demo data" : syncedLabel(account.lastSyncedAt);
+      return syncedLabel(account.lastSyncedAt);
   }
+}
+
+const dateWithoutYear = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** "Tuesday, September 29", with the year only when it is not the current one. */
+function eventDate(day: DayNumber): string {
+  return civilDate(day).year === new Date().getUTCFullYear()
+    ? dateWithoutYear.format(day * DAY_MS)
+    : formatLongDate(day);
 }
 
 /**
@@ -48,14 +62,14 @@ export function describeEventWhen(
   if (instance.allDay === true) {
     const first = Math.floor(instance.start / DAY_MS);
     const last = Math.max(first, Math.floor(instance.end / DAY_MS) - 1);
-    return last === first ? formatLongDate(first) : formatRangeTitle(first, last);
+    return last === first ? eventDate(first) : formatRangeTitle(first, last);
   }
   const start = toZoned(instance.start, zone);
   const end = toZoned(Math.max(instance.start, instance.end - 1), zone);
   if (start.day === end.day) {
-    return `${formatLongDate(start.day)} · ${formatTimeRange(instance.start, instance.end, zone, hourFormat)}`;
+    return `${eventDate(start.day)} · ${formatTimeRange(instance.start, instance.end, zone, hourFormat)}`;
   }
-  return `${formatLongDate(start.day)}, ${formatTime(instance.start, zone, hourFormat)} – ${formatLongDate(toZoned(instance.end, zone).day)}, ${formatTime(instance.end, zone, hourFormat)}`;
+  return `${eventDate(start.day)}, ${formatTime(instance.start, zone, hourFormat)} – ${eventDate(toZoned(instance.end, zone).day)}, ${formatTime(instance.end, zone, hourFormat)}`;
 }
 
 /** "10:30 – 11:30 AM in Europe/Berlin (GMT+2)" when the event's own zone differs from the view's. */

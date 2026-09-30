@@ -14,7 +14,7 @@
   --cal-event-tint-hover: 21%;
   --cal-event-tint-past: 8%;
   --cal-event-tint-free: 8%;
-  --cal-event-ink-mix: 46%;
+  --cal-event-ink-mix: 40%;
   --cal-bar-height: 20px;
   --cal-bar-gap: 2px;
   --event-min-height: 18px;
@@ -227,10 +227,12 @@
   line-height: 15px;
 }
 
+/* Titles wrap between words only; a word wider than a narrow block is clipped, not split. */
 [data-event-title] {
   font-weight: 500;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 [data-event-time],

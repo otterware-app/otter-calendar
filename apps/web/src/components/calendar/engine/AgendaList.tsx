@@ -11,7 +11,7 @@ import {
 } from "@t3tools/client-runtime/calendar/format";
 import type { Calendar, CalendarEventInstance } from "@t3tools/contracts";
 import { type DayNumber, zonedDay } from "@t3tools/shared/calendar/time";
-import { LegendList } from "@legendapp/list/react";
+import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/lib/utils";
@@ -161,6 +161,7 @@ function AgendaListAt(props: AgendaListProps) {
     ),
   );
   const now = useMinuteClock();
+  const listRef = useRef<LegendListRef>(null);
 
   const shown = useMemo(() => {
     const map = new Map<string, CalendarEventInstance>();
@@ -182,6 +183,15 @@ function AgendaListAt(props: AgendaListProps) {
     if (rootRef.current !== null)
       syncRovingFocus(rootRef.current, rovingRef.current ?? selectedKey);
   });
+
+  // `initialScrollIndex` positions by estimated sizes, and day groups vary a lot in height, so
+  // settle on the anchor day again once the rows above it have been measured.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      void listRef.current?.scrollToIndex({ index: initialIndex, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialIndex]);
 
   // Ask for the days the list covers whenever it grows.
   useEffect(() => {
@@ -247,6 +257,7 @@ function AgendaListAt(props: AgendaListProps) {
       className="relative flex h-full min-h-0 flex-col bg-background"
     >
       <LegendList<AgendaGroup>
+        ref={listRef}
         data={groups}
         keyExtractor={(group) => String(group.day)}
         renderItem={({ item }) => (

@@ -17,7 +17,7 @@ import {
   parseDayNumber,
   toZoned,
 } from "@t3tools/shared/calendar/time";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { calendarEnvironment } from "../../state/calendar";
 import { useEnvironmentQuery } from "../../state/query";
@@ -167,18 +167,21 @@ function GoToDate({
 }) {
   const [value, setValue] = useState(formatDayNumber(range.anchor));
   const parsed = parseDayNumber(value);
+  const formId = useId();
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (parsed !== null) onGo(parsed);
-      }}
-    >
+    <>
       <DialogHeader>
         <DialogTitle>Go to date</DialogTitle>
       </DialogHeader>
       <DialogPanel>
-        <div className="flex flex-col gap-4">
+        <form
+          id={formId}
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (parsed !== null) onGo(parsed);
+          }}
+        >
           <Input
             type="date"
             nativeInput
@@ -194,14 +197,14 @@ function GoToDate({
             range={parsed === null ? null : { firstDay: parsed, lastDay: parsed }}
             onPick={onGo}
           />
-        </div>
+        </form>
       </DialogPanel>
       <DialogFooter>
-        <Button type="submit" disabled={parsed === null}>
+        <Button type="submit" form={formId} disabled={parsed === null}>
           Go
         </Button>
       </DialogFooter>
-    </form>
+    </>
   );
 }
 
