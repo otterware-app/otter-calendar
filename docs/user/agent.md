@@ -13,13 +13,17 @@ device continues on another.
 
 ## What it knows
 
-The assistant sees what you are looking at: when a note is open, the app tells it which one, so
-"shorten this" or "make a checklist from this" works without copying text. It does not see the
-rest of your screen.
+The assistant sees what you are looking at: the app tells it which days are on screen, your time
+zone, and the event you opened, so "move this to Friday afternoon" or "what else is on that day?"
+works without copying anything. It does not see the rest of your screen.
+
+It can list your accounts and calendars, list and search events across every account, read an
+event, create, move, resize, change and delete events (asking which occurrences for repeating
+ones), answer invitations, and find free time across all your calendars.
 
 ## While it works
 
-Each tool it uses appears as a step, such as "Create note", while it works. When it finishes,
+Each tool it uses appears as a step, such as "Created event", while it works. When it finishes,
 the steps fold behind **Worked for …** and the answer stays visible; open the fold to see what it
 did. Send another message while it works to steer it, if the provider supports that, or press
 **Stop**.

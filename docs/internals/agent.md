@@ -25,8 +25,8 @@ the app, shown as a conversation with foldable steps) and leaves out T3's orches
 
 ## App tools call the same services as clients
 
-A tool handler calls the same feature service an RPC handler calls (the Notes toolkit calls
-`NotesService`). The agent's change then takes the path a click takes: same validation, same
+A tool handler calls the same feature service an RPC handler calls (the calendar toolkit calls
+`CalendarService`). The agent's change then takes the path a click takes: same validation, same
 persistence, same live update to every client. Never give the agent a second way to write app
 data, such as files or SQL, because clients would not see it.
 

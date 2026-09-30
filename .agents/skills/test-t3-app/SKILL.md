@@ -17,7 +17,7 @@ repository root and retain its terminal session. Use the worktree's ignored
 `.t3` state and read the actual ports and pairing URL from the dev-runner output.
 Never run against the app's installed home (`~/.otter-scaffold/userdata`) or set `VITE_HTTP_URL` or `VITE_WS_URL`.
 
-Test with meaningful data: several notes, and an agent conversation with tool steps. Read
+Test with meaningful data: demo calendar data (Calendar settings → Demo data, or `T3CODE_CALENDAR_DEMO=standard`), and an agent conversation with tool steps. Read
 [references/sqlite-fixtures.md](references/sqlite-fixtures.md) only when
 inspecting or seeding SQLite. Stop the test server before direct fixture writes.
 

@@ -30,7 +30,8 @@ A feature is a server service that owns its data in SQLite (migrations in
 [`persistence/Migrations`](../../apps/server/src/persistence/Migrations)), RPC methods that call
 it, a stream that starts with a snapshot, app tools that call the same service (see
 [the agent](./agent.md)), shared client state in `packages/client-runtime`, and web and mobile
-screens. Notes is the scaffold's example of the whole slice.
+screens. The calendar ([`src/calendar`](../../apps/server/src/calendar)) is this app's feature; see
+[the calendar engine](./calendar-engine.md).
 
 Services serialize their own writes and publish changes after they commit. A subscriber's
 snapshot must never be newer than the changes that follow it; take the snapshot and subscribe

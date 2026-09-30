@@ -32,7 +32,7 @@ It asks before restarting the background service; if you decline, run
 `otter-calendar service restart` when you are ready. A server you started by hand keeps running;
 stop it and start it again with your usual options, such as `--host` or `--tailscale-serve`.
 
-Updating restarts the server. Chats, notes, and settings are kept, but turns the agent was working
+Updating restarts the server. Chats, calendar accounts, and settings are kept, but turns the agent was working
 on stop and show as interrupted. Send a new message to continue.
 
 If a client and server are too far apart to talk to each other, the connection shows **Client not

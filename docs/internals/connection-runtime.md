@@ -51,8 +51,8 @@ connection; labeling that state "reconnecting" promises a transport retry that
 will never happen.
 
 Feature state such as [agent conversations](../../packages/client-runtime/src/state/agent.ts)
-and [notes](../../packages/client-runtime/src/state/notes.ts) is a snapshot followed
-by changes. Every subscription starts with a snapshot, again after each reconnect,
+and the [calendar's week chunks](../../packages/client-runtime/src/state/calendar.ts) is a
+snapshot followed by changes. Every subscription starts with a snapshot, again after each reconnect,
 so the reducers in those modules are the whole client-side model: there is no
 replay cursor to keep consistent and no offline copy to merge. A new feature
 should keep that shape. Only the server configuration is cached on the device, so

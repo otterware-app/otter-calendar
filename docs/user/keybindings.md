@@ -3,20 +3,36 @@
 Customize shortcuts in **Settings → Keybindings** on web and desktop. That page lists every
 command with its current shortcut. `mod` means Command on macOS and Ctrl elsewhere.
 
-| Command                 | Default           | What it does                                |
-| ----------------------- | ----------------- | ------------------------------------------- |
-| `commandPalette.toggle` | `mod+k`           | Open the command palette                    |
-| `sidebar.toggle`        | `mod+b`           | Show or hide the sidebar                    |
-| `navigation.back`       | `mod+[`           | Go back to the previous page                |
-| `navigation.forward`    | `mod+]`           | Go forward again                            |
-| `agent.toggle`          | `mod+i`           | Show or hide the agent panel                |
-| `agent.new`             | `mod+shift+o`     | Start a new agent chat                      |
-| `notes.new`             | `mod+n`           | Create a note (not while typing in a field) |
-| `theme.select`          | `mod+alt+a`       | Choose a theme                              |
-| `appearance.cycle`      | `mod+alt+shift+a` | Cycle between system, light, and dark       |
-| `themeEditor.toggle`    | `mod+alt+shift+t` | Open or close the theme editor              |
+| Command                 | Default           | What it does                                  |
+| ----------------------- | ----------------- | --------------------------------------------- |
+| `commandPalette.toggle` | `mod+k`           | Open the command palette                      |
+| `sidebar.toggle`        | `mod+b`           | Show or hide the sidebar                      |
+| `navigation.back`       | `mod+[`           | Go back to the previous page                  |
+| `navigation.forward`    | `mod+]`           | Go forward again                              |
+| `agent.toggle`          | `mod+i`           | Show or hide the agent panel                  |
+| `agent.new`             | `mod+shift+o`     | Start a new agent chat                        |
+| `calendar.today`        | `t`               | Go to today                                   |
+| `calendar.next`         | `j`, `n`, `→`     | Next day, week, or month                      |
+| `calendar.previous`     | `k`, `p`, `←`     | Previous day, week, or month                  |
+| `calendar.view.day`     | `d`               | Day view                                      |
+| `calendar.view.week`    | `w`               | Week view                                     |
+| `calendar.view.custom`  | `x`               | Several days (count set in Calendar settings) |
+| `calendar.view.month`   | `m`               | Month view                                    |
+| `calendar.view.agenda`  | `a`               | Agenda (schedule) view                        |
+| `calendar.create`       | `c`, `mod+n`      | New event                                     |
+| `calendar.search`       | `/`               | Search events in every account                |
+| `calendar.goToDate`     | `g`               | Jump to a date                                |
+| `calendar.undo`         | `mod+z`           | Undo the last change to an event              |
+| `calendar.redo`         | `mod+shift+z`     | Redo it                                       |
+| `theme.select`          | `mod+alt+a`       | Choose a theme                                |
+| `appearance.cycle`      | `mod+alt+shift+a` | Cycle between system, light, and dark         |
+| `themeEditor.toggle`    | `mod+alt+shift+t` | Open or close the theme editor                |
 
-The command palette searches actions, agent chats, notes, and settings pages.
+Calendar shortcuts do nothing while you type in a field. With an event selected, `Enter` opens
+it, `Delete` or `Backspace` deletes it, `Alt+↑`/`Alt+↓` move it by 15 minutes, `Alt+←`/`Alt+→`
+by a day, and `Alt+Shift+↑`/`Alt+Shift+↓` change its end. `Esc` closes the open event.
+
+The command palette searches actions, agent chats, calendars, and settings pages.
 
 ## Sending messages
 
@@ -32,7 +48,7 @@ array of rules:
 ```json
 [
   { "key": "mod+j", "command": "agent.toggle" },
-  { "key": "mod+shift+n", "command": "notes.new", "when": "!editableFocus" }
+  { "key": "mod+shift+n", "command": "calendar.create", "when": "!editableFocus" }
 ]
 ```
 

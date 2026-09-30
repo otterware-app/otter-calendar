@@ -1,7 +1,7 @@
 # Otter Calendar Mobile
 
-The Expo (React Native) app for iOS and Android. It connects to any environment, shows the Notes
-example and the agent, and shares its connection and feature state with the web app through
+The Expo (React Native) app for iOS and Android. It connects to any environment, shows the calendar
+(agenda, day view, event details and RSVP) and the agent, and shares its connection and feature state with the web app through
 `packages/client-runtime`.
 
 It uses native modules, so Expo Go does not work; use a development build. Run commands from

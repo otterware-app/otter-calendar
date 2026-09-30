@@ -19,8 +19,8 @@ asking you a question about the task.
 ## App actions
 
 The agent works on the app's data through the app's own tools, the same actions you take in the
-app. Tools that only read, such as listing or searching notes, run without asking in every mode.
-Tools that change data, such as creating, editing, or deleting a note, ask first in
+app. Tools that only read, such as listing events or finding free time, run without asking in every
+mode. Tools that change data, such as creating, moving, or deleting an event, ask first in
 **Supervised** and run freely in the other modes.
 
 ## Provider differences

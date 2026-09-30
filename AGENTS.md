@@ -1,13 +1,15 @@
-# Otter Scaffold
+# Otter Calendar
 
-> **This is Otter Scaffold**, the starting point for Otterware apps, cut from Otter Code (our
-> fork of T3 Code). Read [SCAFFOLD.md](SCAFFOLD.md) first: it covers the app's identity, how to
-> start a new app, external setup, releases, and keeping up with upstream.
+> **This is Otter Calendar**, a calendar for several Google accounts at once, built from Otter
+> Scaffold (the starting point for Otterware apps, cut from Otter Code, our fork of T3 Code).
+> Read [SCAFFOLD.md](SCAFFOLD.md) for the app's identity, external setup, releases, and merging
+> scaffold changes, and [the calendar engine](docs/internals/calendar-engine.md) before changing
+> the calendar.
 
-A Node WebSocket server (the environment) owns the app's data and runs its agents, and serves
-web, desktop, and mobile clients. The agent layer drives the user's own Claude Code and Codex
-subscriptions and gives them the app's tools over MCP. Apps built from the scaffold replace the
-Notes example with their own domain.
+A Node WebSocket server (the environment) owns the app's data (Google accounts, tokens, synced
+calendars and events) and runs its agents, and serves web, desktop, and mobile clients. The agent
+layer drives the user's own Claude Code and Codex subscriptions and gives them the app's calendar
+tools over MCP.
 
 ## What we never compromise on
 
@@ -155,7 +157,7 @@ Full glossary with file links: `docs/internals/glossary.md`
 
 ## Where code lives
 
-- `apps/server` - WebSocket RPC, auth and pairing, T3 Connect, settings, providers (`src/provider`, adapters in `src/provider/adapters`), the agent (`src/agent`), app tools over MCP (`src/mcp`), features (`src/notes` is the example). Effect-heavy: read `.repos/effect-smol/LLMS.md` before writing Effect code.
+- `apps/server` - WebSocket RPC, auth and pairing, T3 Connect, settings, providers (`src/provider`, adapters in `src/provider/adapters`), the agent (`src/agent`), app tools over MCP (`src/mcp`), the calendar (`src/calendar`: service, sync, Google and demo sources). Effect-heavy: read `.repos/effect-smol/LLMS.md` before writing Effect code.
 - `apps/web` - React/Vite UI. `apps/desktop` wraps it, `apps/mobile` is React Native (Expo).
 - `infra/relay` - the T3 Connect relay (Cloudflare Worker).
 - `packages/contracts` - Effect/Schema contracts plus small derived helpers. No heavy runtime logic.

@@ -65,14 +65,18 @@ port.
 
 3. `vp i` (or `pnpm install`), then `vp run dev`.
 
-4. Replace the Notes example with your domain. Notes shows every layer a feature touches:
-   - contract: [`packages/contracts/src/notes.ts`](packages/contracts/src/notes.ts) and its
+4. Replace the Notes example with your domain. In Otter Calendar the calendar replaced it, in
+   every layer a feature touches:
+   - contract: [`packages/contracts/src/calendar.ts`](packages/contracts/src/calendar.ts) and its
      methods in [`rpc.ts`](packages/contracts/src/rpc.ts);
-   - server: [`apps/server/src/notes/`](apps/server/src/notes) (service + SQLite migration),
-     RPC handlers in `ws.ts`, scopes in `auth/RpcAuthorization.ts`;
-   - agent tools: [`apps/server/src/mcp/toolkits/notes/`](apps/server/src/mcp/toolkits/notes);
-   - shared client state: `packages/client-runtime/src/state/notes.ts`;
-   - web: the `/notes` route and its components; mobile: the Notes screens.
+   - server: [`apps/server/src/calendar/`](apps/server/src/calendar) (service, sync, Google and
+     demo sources) with migration `003_Calendar`, RPC handlers in `ws.ts`, scopes in
+     `auth/RpcAuthorization.ts`;
+   - agent tools: [`apps/server/src/mcp/toolkits/calendar/`](apps/server/src/mcp/toolkits/calendar);
+   - shared client state and view logic: `packages/client-runtime/src/state/calendar.ts` and
+     `packages/client-runtime/src/calendar/`; zone and recurrence math in
+     `packages/shared/src/calendar/`;
+   - web: the `/calendar` route and `components/calendar`; mobile: `features/calendar`.
 
 5. Do the external setup below when you want accounts, remote access and releases. The app
    runs locally without any of it.

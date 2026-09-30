@@ -22,7 +22,7 @@ repository root, retain its terminal session, and read the actual backend port
 from the dev-runner output. Use the worktree's ignored `.t3` state. Never run
 against the app's installed home (`~/.otter-scaffold/userdata`). The Browser panel is not required for this workflow.
 
-Test with meaningful data: several notes, and an agent conversation. Read the shared
+Test with meaningful data: demo calendar data, and an agent conversation. Read the shared
 [SQLite fixture reference](../test-t3-app/references/sqlite-fixtures.md) only
 when inspecting or seeding SQLite. Stop the test server before fixture writes.
 
@@ -59,7 +59,7 @@ through AgentDevice. For a backend on the device host, use
 `http://127.0.0.1:<server-port>` on iOS or `http://10.0.2.2:<server-port>`
 on Android. For a remote backend, use its reachable origin.
 
-Confirm the environment's notes appear, exercise the affected flow, and capture
+Confirm the environment's events appear, exercise the affected flow, and capture
 evidence. Retain the app and environment while iterating. At teardown, remove
 the disposable connection, close the AgentDevice session, call `device_close`,
 and stop only your backend and Metro processes.

@@ -3,6 +3,7 @@
 ## Using Otter Calendar
 
 - [Install](./user/install.md)
+- [Your calendars](./user/calendar.md)
 - [The assistant](./user/agent.md)
 - [Permission modes](./user/permission-modes.md)
 - [Appearance and themes](./user/appearance.md)
@@ -27,6 +28,7 @@ source alone does not explain. Most code changes do not need an internal documen
 Follow the [documentation rules](../AGENTS.md#documentation) before adding one.
 
 - [Architecture overview](./internals/overview.md)
+- [Calendar engine](./internals/calendar-engine.md) (and [performance](./performance.md))
 - [Glossary](./internals/glossary.md)
 - [The in-app agent](./internals/agent.md)
 - [Providers](./internals/providers.md)

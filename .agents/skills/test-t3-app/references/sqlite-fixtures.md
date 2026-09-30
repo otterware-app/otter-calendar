@@ -38,7 +38,7 @@ Use one statement per invocation for both `query` and `exec`; the helper wraps w
 
 ## Seed feature data carefully
 
-Feature services own their tables (for example `notes`, and the agent's `agent_threads`,
+Feature services own their tables (for example the calendar's `calendar_*` tables, and the agent's `agent_threads`,
 `agent_turns`, `agent_turn_items` and `agent_runtime_requests`). Inspect
 `PRAGMA table_info(<table>)` and the migrations under `apps/server/src/persistence/Migrations/`
 before constructing inserts. Keep identifiers unique, timestamps as ISO strings, JSON columns

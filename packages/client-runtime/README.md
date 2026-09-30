@@ -26,5 +26,5 @@ focused state or Atom constructors to application-owned runtimes.
 
 Applications should import the narrowest relevant subpath. There is no broad
 `state` export: use domain paths such as `state/server`, `state/agent`,
-or `state/notes`. Subpath indices and explicitly exported domain
+or `state/calendar`. Subpath indices and explicitly exported domain
 files are public API boundaries; all other files remain implementation details.
