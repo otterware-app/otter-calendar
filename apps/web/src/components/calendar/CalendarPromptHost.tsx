@@ -31,6 +31,12 @@ function PromptForm({ prompt }: { prompt: CalendarPrompt }) {
               event.preventDefault();
               answerCalendarPrompt(value);
             }}
+            // The radios are custom elements, which do not submit a form on Enter.
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              answerCalendarPrompt(value);
+            }}
           >
             <RadioGroup
               aria-label={prompt.title}
