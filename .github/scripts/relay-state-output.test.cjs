@@ -18,7 +18,7 @@ const config = {
 };
 const json = JSON.stringify(config, null, 2);
 
-function runStep(stdout, exitCode = 0) {
+function runStep(stdout, exitCode = 0, relayConfigured = true) {
   const runnerTemp = mkdtempSync(join(tmpdir(), "t3-relay-state-test-"));
   try {
     const result = spawnSync(
@@ -31,6 +31,7 @@ function runStep(stdout, exitCode = 0) {
           RUNNER_TEMP: runnerTemp,
           FIXTURE_STDOUT: stdout,
           FIXTURE_EXIT: String(exitCode),
+          ...(relayConfigured ? { CLOUDFLARE_ACCOUNT_ID: "fixture-account" } : {}),
         },
       },
     );
@@ -64,13 +65,28 @@ for (const prefix of [
 
 for (const [name, stdout, exitCode] of [
   ["failed CLI even with valid JSON", json, 1],
-  ["missing JSON", "Refreshing credentials...", 0],
   ["malformed JSON", "{not JSON", 0],
-  ["missing token", JSON.stringify({ ...config, clientTracingToken: null }, null, 2), 0],
 ]) {
-  test(`rejects ${name} without writing config`, () => {
+  test(`fails on ${name} without writing config`, () => {
     const result = runStep(stdout, exitCode);
     assert.notEqual(result.status, 0);
-    assert.equal(result.envFile, undefined);
+    assert.ok(!result.envFile, "no tracing config is written");
   });
 }
+
+for (const [name, stdout] of [
+  ["missing JSON", "Refreshing credentials..."],
+  ["missing token", JSON.stringify({ ...config, clientTracingToken: null }, null, 2)],
+]) {
+  test(`builds without tracing on ${name}`, () => {
+    const result = runStep(stdout, 0);
+    assert.equal(result.status, 0);
+    assert.equal(result.envFile, "");
+  });
+}
+
+test("builds without tracing when no relay is configured", () => {
+  const result = runStep(json, 0, false);
+  assert.equal(result.status, 0);
+  assert.equal(result.envFile, "");
+});
