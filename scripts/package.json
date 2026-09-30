@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
+    "playwright-core": "1.60.0",
     "typescript": "catalog:",
     "typescript-legacy": "npm:typescript@~6.0.3",
     "vite-plus": "catalog:"
