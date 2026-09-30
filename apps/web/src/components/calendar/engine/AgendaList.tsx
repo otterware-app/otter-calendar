@@ -12,7 +12,7 @@ import {
 import type { Calendar, CalendarEventInstance } from "@t3tools/contracts";
 import { type DayNumber, zonedDay } from "@t3tools/shared/calendar/time";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -22,7 +22,6 @@ import type { AgendaListProps } from "./types";
 import { useMinuteClock } from "./useMinuteClock";
 
 /** Days loaded around the anchor at first, and added per step when the list nears an edge. */
-const INITIAL_BEFORE = 14;
 const INITIAL_AFTER = 42;
 const EXTEND_BY = 28;
 /** How far the list may reach from its anchor (about five years each way). */
@@ -142,7 +141,7 @@ function AgendaListAt(props: AgendaListProps) {
   } = props;
   const rootRef = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState(() => ({
-    from: anchorDay - INITIAL_BEFORE,
+    from: anchorDay,
     to: anchorDay + INITIAL_AFTER,
   }));
   const [cache] = useState(() => new AgendaGroupCache());
@@ -153,12 +152,6 @@ function AgendaListAt(props: AgendaListProps) {
         today,
       ]),
     [cache, instances, range.from, range.to, timeZone, preferences.showDeclined, anchorDay, today],
-  );
-  const [initialIndex] = useState(() =>
-    Math.max(
-      0,
-      groups.findIndex((group) => group.day >= anchorDay),
-    ),
   );
   const now = useMinuteClock();
   const listRef = useRef<LegendListRef>(null);
@@ -180,18 +173,23 @@ function AgendaListAt(props: AgendaListProps) {
   useLayoutEffect(() => {
     latest.current = props;
     shownRef.current = shown;
+    loadEarlierRef.current = loadEarlier;
     if (rootRef.current !== null)
       syncRovingFocus(rootRef.current, rovingRef.current ?? selectedKey);
   });
 
-  // `initialScrollIndex` positions by estimated sizes, and day groups vary a lot in height, so
-  // settle on the anchor day again once the rows above it have been measured.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      void listRef.current?.scrollToIndex({ index: initialIndex, animated: false });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [initialIndex]);
+  // The list starts at the anchor day, so it opens there without scrolling to an index whose
+  // offset would come from estimated row heights. Earlier days load once the user scrolls up
+  // (at the top, a wheel or swipe upward), and the list keeps its position when they arrive.
+  const userScrolled = useRef(false);
+  const loadEarlier = useCallback(() => {
+    setRange((current) =>
+      current.from <= anchorDay - MAX_REACH
+        ? current
+        : { ...current, from: current.from - EXTEND_BY },
+    );
+  }, [anchorDay]);
+  const loadEarlierRef = useRef(loadEarlier);
 
   // Ask for the days the list covers whenever it grows.
   useEffect(() => {
@@ -239,10 +237,28 @@ function AgendaListAt(props: AgendaListProps) {
       rovingRef.current = element.dataset.eventKey ?? null;
       syncRovingFocus(root, rovingRef.current);
     };
+    const onUserScroll = () => {
+      userScrolled.current = true;
+    };
+    const onWheel = (event: WheelEvent) => {
+      userScrolled.current = true;
+      const scroller = listRef.current?.getScrollableNode();
+      if (event.deltaY < 0 && scroller instanceof HTMLElement && scroller.scrollTop <= 0) {
+        loadEarlierRef.current();
+      }
+    };
     root.addEventListener("click", onClick);
     root.addEventListener("keydown", onKeyDown);
     root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("wheel", onWheel, { passive: true });
+    root.addEventListener("touchstart", onUserScroll, { passive: true });
+    root.addEventListener("keydown", onUserScroll);
+    root.addEventListener("pointerdown", onUserScroll);
     return () => {
+      root.removeEventListener("wheel", onWheel);
+      root.removeEventListener("touchstart", onUserScroll);
+      root.removeEventListener("keydown", onUserScroll);
+      root.removeEventListener("pointerdown", onUserScroll);
       root.removeEventListener("click", onClick);
       root.removeEventListener("keydown", onKeyDown);
       root.removeEventListener("focusin", onFocusIn);
@@ -283,17 +299,12 @@ function AgendaListAt(props: AgendaListProps) {
         extraData={extraData}
         estimatedItemSize={88}
         drawDistance={800}
-        initialScrollIndex={initialIndex}
         maintainVisibleContentPosition
         onStartReachedThreshold={1}
         onEndReachedThreshold={1}
-        onStartReached={() =>
-          setRange((current) =>
-            current.from <= anchorDay - MAX_REACH
-              ? current
-              : { ...current, from: current.from - EXTEND_BY },
-          )
-        }
+        onStartReached={() => {
+          if (userScrolled.current) loadEarlier();
+        }}
         onEndReached={() =>
           setRange((current) =>
             current.to >= anchorDay + MAX_REACH
