@@ -93,7 +93,7 @@ None of this is needed for local development. Each step lists where its values g
   secret go into the root `.env` as `T3CODE_GOOGLE_CLIENT_ID`/`T3CODE_GOOGLE_CLIENT_SECRET` to be
   baked into local builds; for CI builds set the repository variable `GOOGLE_CLIENT_ID` and the
   secret `GOOGLE_CLIENT_SECRET` (read by `release.yml`'s bundle job). A server's environment or
-  **Settings → Calendar → Google OAuth client** override them at runtime. Without
+  **Settings → Calendar → Google sign-in** override them at runtime. Without
   one, the app runs with demo data only. Details: [calendar engine](docs/internals/calendar-engine.md#sync-and-google-sign-in).
 - **Clerk (accounts)**: an application with a JWT template (audience = the relay's
   `CLERK_JWT_AUDIENCE`), a public CLI OAuth application with PKCE (redirect
