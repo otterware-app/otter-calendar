@@ -74,7 +74,7 @@ function hashString(value: string): number {
 }
 
 /** mulberry32: small, fast and good enough for demo data. */
-export function makeRng(seed: number): () => number {
+function makeRng(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -1238,7 +1238,7 @@ export function demoAccounts(profile: DemoProfile, seed: number): ReadonlyArray<
 // ── Listing ──────────────────────────────────────────────────────────
 
 /** Whether an event reaches past `timeMin` (Google's `timeMin` filters on the end). */
-export function endsAfter(event: RemoteEvent, timeMin: number): boolean {
+function endsAfter(event: RemoteEvent, timeMin: number): boolean {
   if (event.status === "cancelled") return true;
   const times = eventTimes(event, "UTC");
   if (times === null) return true;

@@ -44,7 +44,7 @@ export interface DemoClientOptions {
   readonly latency: boolean;
 }
 
-export function demoAccount(options: DemoClientOptions): DemoAccountSpec | undefined {
+function demoAccount(options: DemoClientOptions): DemoAccountSpec | undefined {
   return demoAccounts(options.profile, options.seed)[options.accountIndex];
 }
 

@@ -46,7 +46,7 @@ export function zoneOr(zone: string | undefined, fallback: string): string {
 }
 
 /** An event time as epoch ms; all-day dates at UTC midnight. Null when missing or malformed. */
-export function parseEventDateTime(
+function parseEventDateTime(
   value: RemoteEventDateTime | undefined,
   fallbackZone: string,
 ): { readonly ms: number; readonly allDay: boolean } | null {
@@ -157,7 +157,7 @@ export function selfAttendee(event: RemoteEvent): RemoteAttendee | undefined {
 }
 
 /** The user organizes it: the organizer is this calendar, or nobody is named. */
-export function isOrganizer(event: RemoteEvent): boolean {
+function isOrganizer(event: RemoteEvent): boolean {
   return event.organizer === undefined || event.organizer.self === true;
 }
 
@@ -181,9 +181,9 @@ export function isReadOnly(event: RemoteEvent, role: CalendarAccessRole): boolea
 // ── What an instance shows ───────────────────────────────────────────
 
 export const FLAG_ALL_DAY = 1;
-export const FLAG_TENTATIVE = 2;
+const FLAG_TENTATIVE = 2;
 export const FLAG_FREE = 4;
-export const FLAG_MEET = 8;
+const FLAG_MEET = 8;
 export const FLAG_READ_ONLY = 16;
 
 /** Google Calendar's event colors by `colorId`, as its web app shows them. */
@@ -201,17 +201,17 @@ const EVENT_COLORS: Readonly<Record<string, string>> = {
   "11": "#d50000",
 };
 
-export function eventColor(colorId: string | undefined): string | null {
+function eventColor(colorId: string | undefined): string | null {
   return colorId === undefined ? null : (EVENT_COLORS[colorId] ?? null);
 }
 
-export function shortLocation(location: string | undefined): string | null {
+function shortLocation(location: string | undefined): string | null {
   const line = location?.split("\n")[0]?.trim() ?? "";
   if (line === "") return null;
   return line.length > LOCATION_MAX ? `${line.slice(0, LOCATION_MAX - 1)}…` : line;
 }
 
-export function conferenceOf(event: RemoteEvent): CalendarConference | undefined {
+function conferenceOf(event: RemoteEvent): CalendarConference | undefined {
   const entries = event.conferenceData?.entryPoints ?? [];
   const video = entries.find((entry) => entry.entryPointType === "video" && entry.uri);
   const url = video?.uri ?? event.hangoutLink;
@@ -228,7 +228,7 @@ export function conferenceOf(event: RemoteEvent): CalendarConference | undefined
   };
 }
 
-export function responseOf(event: RemoteEvent): CalendarResponseStatus | null {
+function responseOf(event: RemoteEvent): CalendarResponseStatus | null {
   if (!canRespond(event)) return null;
   return selfAttendee(event)?.responseStatus ?? "needsAction";
 }

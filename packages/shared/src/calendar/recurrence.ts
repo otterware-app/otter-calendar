@@ -91,7 +91,7 @@ function parseDateValue(value: string, zone: string, allDay: boolean): number | 
 }
 
 /** Parses the `RRULE:` line's value (with or without the `RRULE:` prefix). */
-export function parseRecurrenceRule(
+function parseRecurrenceRule(
   line: string,
   context: { readonly allDay: boolean; readonly timeZone: string } = {
     allDay: false,
@@ -465,7 +465,7 @@ export function recurrenceEnd(series: RecurrenceSeries): number | null {
 // ── Instance ids ─────────────────────────────────────────────────────
 
 /** Google's instance id suffix: `20261001T090000Z` (timed) or `20261001` (all-day). */
-export function occurrenceIdSuffix(start: number, allDay: boolean): string {
+function occurrenceIdSuffix(start: number, allDay: boolean): string {
   const date = new Date(start);
   const ymd = `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}`;
   if (allDay) return ymd;
@@ -591,16 +591,6 @@ function filterDateLine(
       return parsed === null || keep(parsed);
     });
   return values.length === 0 ? null : `${head}:${values.join(",")}`;
-}
-
-/** Adds an EXDATE for one occurrence (used when a single occurrence is deleted locally). */
-export function recurrenceWithout(
-  series: RecurrenceSeries,
-  occurrenceStart: number,
-): Array<string> {
-  const value = occurrenceIdSuffix(occurrenceStart, series.allDay);
-  const line = series.allDay ? `EXDATE;VALUE=DATE:${value}` : `EXDATE:${value}`;
-  return [...series.recurrence, line];
 }
 
 // ── Building and describing rules (the editor's repeat picker) ───────
@@ -756,9 +746,4 @@ export function describeRecurrence(
     text += `, until ${date}`;
   }
   return text;
-}
-
-/** `YYYY-MM-DD` of an all-day occurrence start (UTC midnight). */
-export function occurrenceDate(start: number): string {
-  return formatDayNumber(Math.floor(start / DAY_MS));
 }

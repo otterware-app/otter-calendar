@@ -29,7 +29,7 @@ export type EventFieldsInput = Pick<
 >;
 
 /** A Google Meet (or demo placeholder) request, created with the event. */
-export function conferenceRequest(requestId: string): RemoteConferenceData {
+function conferenceRequest(requestId: string): RemoteConferenceData {
   return { createRequest: { requestId, conferenceSolutionKey: { type: "hangoutsMeet" } } };
 }
 
@@ -41,7 +41,7 @@ function hasConference(event: RemoteEvent): boolean {
  * The attendee list for new guest emails: the organizer stays, remaining guests keep their
  * responses, new guests are invited.
  */
-export function attendeesFor(
+function attendeesFor(
   emails: ReadonlyArray<string>,
   current: ReadonlyArray<RemoteAttendee>,
 ): Array<RemoteAttendee> {
@@ -57,7 +57,7 @@ export function attendeesFor(
 }
 
 /** Guest emails as an update input lists them (the organizer is implied). */
-export function guestEmails(event: RemoteEvent): Array<string> {
+function guestEmails(event: RemoteEvent): Array<string> {
   return (event.attendees ?? [])
     .filter((attendee) => attendee.organizer !== true)
     .map((attendee) => attendee.email);
@@ -86,7 +86,7 @@ export function fieldPatch(
 }
 
 /** The previous values of the fields an input changes, as update input fields. */
-export function previousFields(
+function previousFields(
   input: EventFieldsInput,
   previous: RemoteEvent,
 ): Partial<CalendarUpdateEventInput> {

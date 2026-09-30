@@ -21,7 +21,7 @@ export interface WorkingHours {
   readonly days: ReadonlyArray<number>;
 }
 
-export function isBusy(row: InstanceRow): boolean {
+function isBusy(row: InstanceRow): boolean {
   return (row.flags & (FLAG_ALL_DAY | FLAG_FREE)) === 0 && row.response !== "declined";
 }
 

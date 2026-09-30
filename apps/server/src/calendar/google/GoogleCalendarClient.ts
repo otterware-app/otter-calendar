@@ -93,7 +93,7 @@ const CALENDAR_FIELDS = Object.values({
 /** The page tokens must be in the mask: leaving `nextSyncToken` out silently drops it. */
 export const EVENTS_PAGE_FIELDS = `nextPageToken,nextSyncToken,timeZone,items(${EVENT_FIELDS})`;
 export const CALENDARS_PAGE_FIELDS = `nextPageToken,nextSyncToken,items(${CALENDAR_FIELDS})`;
-export const SINGLE_EVENT_FIELDS = EVENT_FIELDS;
+const SINGLE_EVENT_FIELDS = EVENT_FIELDS;
 
 // ── Responses ────────────────────────────────────────────────────────
 

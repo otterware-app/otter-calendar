@@ -17,9 +17,9 @@
  */
 
 export const MINUTE_MS = 60_000;
-export const HOUR_MS = 3_600_000;
+const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
-export const MINUTES_PER_DAY = 1440;
+const MINUTES_PER_DAY = 1440;
 
 /** Days since 1970-01-01 (a civil date, independent of any zone). */
 export type DayNumber = number;
@@ -99,14 +99,10 @@ const UTC_ZONES = new Set(["UTC", "Etc/UTC", "Etc/GMT", "GMT", "Z"]);
 
 let cachedSystemZone: string | null = null;
 
-/** The device's zone (cached; call `resetSystemTimeZone` after the OS zone changes). */
+/** The device's zone, read once per process. */
 export function systemTimeZone(): string {
   cachedSystemZone ??= new Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   return cachedSystemZone;
-}
-
-export function resetSystemTimeZone(): void {
-  cachedSystemZone = null;
 }
 
 const validZones = new Map<string, boolean>();

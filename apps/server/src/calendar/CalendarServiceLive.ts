@@ -261,7 +261,7 @@ function mondayOf(ms: number): number {
   return (day - ((weekday(day) + 6) % 7)) * DAY_MS;
 }
 
-export const make = Effect.fn("CalendarServiceLive.make")(function* (
+const make = Effect.fn("CalendarServiceLive.make")(function* (
   options: CalendarServiceOptions = {},
 ) {
   const sql = yield* SqlClient.SqlClient;

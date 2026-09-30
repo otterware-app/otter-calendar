@@ -70,7 +70,7 @@ const resolved = (
   return clientId && clientSecret ? Option.some({ clientId, clientSecret, source }) : Option.none();
 };
 
-export const toClientStatus = (client: Option.Option<GoogleOAuthClient>): GoogleClientStatus =>
+const toClientStatus = (client: Option.Option<GoogleOAuthClient>): GoogleClientStatus =>
   Option.match(client, {
     onNone: () => ({ configured: false, source: null, clientId: null }),
     onSome: ({ clientId, source }) => ({ configured: true, source, clientId }),
