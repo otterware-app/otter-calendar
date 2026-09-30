@@ -15,12 +15,12 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import Migration0001 from "./Migrations/001_Baseline.ts";
 import Migration0002 from "./Migrations/002_AgentThreads.ts";
-import Migration0003 from "./Migrations/003_Notes.ts";
+import Migration0003 from "./Migrations/003_Calendar.ts";
 
 const migrationEntries = [
   [1, "Baseline", Migration0001],
   [2, "AgentThreads", Migration0002],
-  [3, "Notes", Migration0003],
+  [3, "Calendar", Migration0003],
 ] as const;
 
 const loader = Migrator.fromRecord(

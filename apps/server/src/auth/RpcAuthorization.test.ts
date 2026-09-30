@@ -34,11 +34,14 @@ describe("RPC authorization scopes", () => {
     expect(requiredScopeForRpcMethod(WS_METHODS.cloudInstallRelayClient)).toBe(AuthRelayWriteScope);
   });
 
-  it("lets read-only clients watch the agent and notes but not change them", () => {
+  it("lets read-only clients watch the agent and the calendar but not change them", () => {
     for (const method of [
       WS_METHODS.agentSubscribeThreads,
       WS_METHODS.agentSubscribeThread,
-      WS_METHODS.notesSubscribe,
+      WS_METHODS.calendarSubscribeDirectory,
+      WS_METHODS.calendarSubscribeWeek,
+      WS_METHODS.calendarGetEvent,
+      WS_METHODS.calendarSearch,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationReadScope);
     }
@@ -46,8 +49,12 @@ describe("RPC authorization scopes", () => {
       WS_METHODS.agentCreateThread,
       WS_METHODS.agentSendMessage,
       WS_METHODS.agentRespondToRequest,
-      WS_METHODS.notesCreate,
-      WS_METHODS.notesDelete,
+      WS_METHODS.calendarCreateEvent,
+      WS_METHODS.calendarDeleteEvent,
+      WS_METHODS.calendarApplyChanges,
+      WS_METHODS.calendarSync,
+      WS_METHODS.calendarGoogleConnect,
+      WS_METHODS.calendarGoogleSetClient,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationOperateScope);
     }

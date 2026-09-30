@@ -88,12 +88,12 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     Effect.sync(() => {
       const compiled = Keybindings.compileResolvedKeybindingRule({
         key: "mod+d",
-        command: "notes.new",
+        command: "calendar.create",
         when: "terminalOpen && !terminalFocus",
       });
 
       assert.deepEqual(compiled, {
-        command: "notes.new",
+        command: "calendar.create",
         shortcut: {
           key: "d",
           metaKey: false,
@@ -145,7 +145,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
       assert.isNull(
         Keybindings.compileResolvedKeybindingRule({
           key: "mod+d",
-          command: "notes.new",
+          command: "calendar.create",
           when: "terminalFocus && (",
         }),
       );
@@ -153,7 +153,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
       assert.isNull(
         Keybindings.compileResolvedKeybindingRule({
           key: "mod+d",
-          command: "notes.new",
+          command: "calendar.create",
           when: `${"!".repeat(300)}terminalFocus`,
         }),
       );
@@ -263,7 +263,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
         yield* writeKeybindingsConfig(keybindingsConfigPath, [
           { key: "mod+shift+t", command: "agent.toggle" },
-          { key: "mod+shift+r", command: "notes.new" },
+          { key: "mod+shift+r", command: "calendar.create" },
         ]);
 
         yield* Effect.gen(function* () {
@@ -284,7 +284,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         for (const defaultRule of Keybindings.DEFAULT_KEYBINDINGS) {
           assert.isTrue(byCommand.has(defaultRule.command), `expected ${defaultRule.command}`);
         }
-        assert.isTrue(byCommand.has("notes.new"));
+        assert.isTrue(byCommand.has("calendar.create"));
       }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
@@ -297,7 +297,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     return Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
       yield* writeKeybindingsConfig(keybindingsConfigPath, [
-        { key: "mod+i", command: "notes.new" },
+        { key: "mod+i", command: "calendar.create" },
       ]);
 
       yield* Effect.gen(function* () {
@@ -307,7 +307,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
 
       const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
       assert.isFalse(persisted.some((entry) => entry.command === "agent.toggle"));
-      assert.isTrue(persisted.some((entry) => entry.command === "notes.new"));
+      assert.isTrue(persisted.some((entry) => entry.command === "calendar.create"));
 
       assert.isTrue(
         messages.some((message) =>
@@ -335,7 +335,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       });
 
@@ -344,9 +344,9 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
 
       assert.deepEqual(persistedView, [
         { key: "mod+j", command: "agent.toggle" },
-        { key: "mod+shift+r", command: "notes.new" },
+        { key: "mod+shift+r", command: "calendar.create" },
       ]);
-      assert.isTrue(resolved.some((entry) => entry.command === "notes.new"));
+      assert.isTrue(resolved.some((entry) => entry.command === "calendar.create"));
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
@@ -354,21 +354,21 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
       yield* writeKeybindingsConfig(keybindingsConfigPath, [
-        { key: "mod+r", command: "notes.new" },
+        { key: "mod+r", command: "calendar.create" },
       ]);
       yield* Effect.gen(function* () {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       });
 
       const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
       const persistedView = persisted.map(({ key, command }) => ({ key, command }));
       assert.deepEqual(persistedView, [
-        { key: "mod+r", command: "notes.new" },
-        { key: "mod+shift+r", command: "notes.new" },
+        { key: "mod+r", command: "calendar.create" },
+        { key: "mod+shift+r", command: "calendar.create" },
       ]);
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
@@ -377,23 +377,23 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
       yield* writeKeybindingsConfig(keybindingsConfigPath, [
-        { key: "mod+r", command: "notes.new" },
-        { key: "mod+shift+r", command: "notes.new" },
+        { key: "mod+r", command: "calendar.create" },
+        { key: "mod+shift+r", command: "calendar.create" },
       ]);
       yield* Effect.gen(function* () {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+alt+r",
-          command: "notes.new",
-          replace: { key: "mod+r", command: "notes.new" },
+          command: "calendar.create",
+          replace: { key: "mod+r", command: "calendar.create" },
         });
       });
 
       const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
       const persistedView = persisted.map(({ key, command }) => ({ key, command }));
       assert.deepEqual(persistedView, [
-        { key: "mod+shift+r", command: "notes.new" },
-        { key: "mod+alt+r", command: "notes.new" },
+        { key: "mod+shift+r", command: "calendar.create" },
+        { key: "mod+alt+r", command: "calendar.create" },
       ]);
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
@@ -402,21 +402,21 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
       yield* writeKeybindingsConfig(keybindingsConfigPath, [
-        { key: "mod+r", command: "notes.new" },
-        { key: "mod+alt+r", command: "notes.new" },
+        { key: "mod+r", command: "calendar.create" },
+        { key: "mod+alt+r", command: "calendar.create" },
       ]);
       yield* Effect.gen(function* () {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+alt+r",
-          command: "notes.new",
-          replace: { key: "mod+r", command: "notes.new" },
+          command: "calendar.create",
+          replace: { key: "mod+r", command: "calendar.create" },
         });
       });
 
       const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
       const persistedView = persisted.map(({ key, command }) => ({ key, command }));
-      assert.deepEqual(persistedView, [{ key: "mod+alt+r", command: "notes.new" }]);
+      assert.deepEqual(persistedView, [{ key: "mod+alt+r", command: "calendar.create" }]);
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
@@ -424,20 +424,20 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
       yield* writeKeybindingsConfig(keybindingsConfigPath, [
-        { key: "mod+r", command: "notes.new" },
-        { key: "mod+shift+r", command: "notes.new" },
+        { key: "mod+r", command: "calendar.create" },
+        { key: "mod+shift+r", command: "calendar.create" },
       ]);
       yield* Effect.gen(function* () {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.removeKeybindingRule({
           key: "mod+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       });
 
       const persisted = yield* readKeybindingsConfig(keybindingsConfigPath);
       const persistedView = persisted.map(({ key, command }) => ({ key, command }));
-      assert.deepEqual(persistedView, [{ key: "mod+shift+r", command: "notes.new" }]);
+      assert.deepEqual(persistedView, [{ key: "mod+shift+r", command: "calendar.create" }]);
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );
 
@@ -451,7 +451,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       }).pipe(toDetailResult);
       assertFailure(result, "expected JSON array");
@@ -471,7 +471,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       }).pipe(toDetailResult);
       assertFailure(firstResult, "expected JSON array");
@@ -480,7 +480,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         const keybindings = yield* Keybindings.Keybindings;
         return yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
       }).pipe(toDetailResult);
       assertFailure(secondResult, "expected JSON array");
@@ -504,7 +504,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
           const keybindings = yield* Keybindings.Keybindings;
           return yield* keybindings.upsertKeybindingRule({
             key: "mod+shift+r",
-            command: "notes.new",
+            command: "calendar.create",
           });
         }).pipe(toDetailResult);
         assertFailure(result, "failed to write keybindings config");
@@ -548,12 +548,12 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
         yield* keybindings.loadConfigState;
         yield* keybindings.upsertKeybindingRule({
           key: "mod+shift+r",
-          command: "notes.new",
+          command: "calendar.create",
         });
         return (yield* keybindings.loadConfigState).keybindings;
       });
 
-      assert.isTrue(loadedAfterUpsert.some((entry) => entry.command === "notes.new"));
+      assert.isTrue(loadedAfterUpsert.some((entry) => entry.command === "calendar.create"));
       assert.isTrue(loadedAfterUpsert.some((entry) => entry.command === "agent.toggle"));
     }).pipe(Effect.provide(makeKeybindingsLayer())),
   );

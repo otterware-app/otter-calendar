@@ -484,7 +484,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       },
     },
   } as const;
-  const APP_INSTRUCTIONS = "Use the notes tools to answer questions about notes.";
+  const APP_INSTRUCTIONS = "Use the calendar tools to answer questions about the calendar.";
 
   const setTestMcpSession = (threadId: ThreadId, authorizationHeader: string) =>
     McpProviderSession.setMcpProviderSession({
@@ -495,7 +495,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       serverName: "test-app",
       endpoint: "http://127.0.0.1:43123/mcp",
       authorizationHeader,
-      readOnlyToolNames: ["notes_list", "notes_read"],
+      readOnlyToolNames: ["calendar_list_events", "calendar_get_event"],
       instructions: APP_INSTRUCTIONS,
     });
 
@@ -569,8 +569,8 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       assert.deepEqual(overrides, {
         allowedTools: [
           ...CLAUDE_READ_ONLY_ALLOWED_TOOLS,
-          "mcp__test-app__notes_list",
-          "mcp__test-app__notes_read",
+          "mcp__test-app__calendar_list_events",
+          "mcp__test-app__calendar_get_event",
         ],
         mcpServers: APP_MCP_SERVERS,
         appInstructions: APP_INSTRUCTIONS,
@@ -585,8 +585,8 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       const overrides = claudeMcpQueryOverrides({ threadId, preApproveAllTools: false });
 
       assert.deepEqual(overrides.allowedTools, [
-        "mcp__test-app__notes_list",
-        "mcp__test-app__notes_read",
+        "mcp__test-app__calendar_list_events",
+        "mcp__test-app__calendar_get_event",
       ]);
     });
   });
@@ -661,7 +661,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
       endpoint: "http://127.0.0.1:43123/mcp",
       authorizationHeader: "Bearer secret-claude-token",
       readOnlyToolNames: [],
-      instructions: "Use the notes tools to answer questions about notes.",
+      instructions: "Use the calendar tools to answer questions about the calendar.",
     });
 
     try {
@@ -681,7 +681,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
             },
           },
         },
-        appInstructions: "Use the notes tools to answer questions about notes.",
+        appInstructions: "Use the calendar tools to answer questions about the calendar.",
       });
 
       const options = makeClaudeQueryOptions({
@@ -704,7 +704,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
       assert.equal(systemPrompt.preset, "claude_code");
       assert.match(
         systemPrompt.append ?? "",
-        /<\/runtime_info>\n\nUse the notes tools to answer questions about notes\.$/,
+        /<\/runtime_info>\n\nUse the calendar tools to answer questions about the calendar\.$/,
       );
       const logged = loggedClaudeQueryOptions(options);
       assert.equal(logged.hasMcpServers, true);

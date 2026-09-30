@@ -253,8 +253,8 @@ it.effect("runs a message through the provider and streams the answer", () =>
 
         const accepted = yield* agent.sendMessage({
           threadId: thread.threadId,
-          text: "Summarize my notes",
-          context: "The user is on the Notes page.",
+          text: "What is on my calendar today?",
+          context: "The user is looking at the week of 2026-09-28.",
         });
         expect(accepted.status).toBe("running");
 
@@ -262,13 +262,13 @@ it.effect("runs a message through the provider and streams the answer", () =>
         expect(start.runId).toBe(accepted.turnId);
         expect(start.providerTurnOrdinal).toBe(1);
         expect(start.message.text).toBe(
-          "Summarize my notes\n\n```context\nThe user is on the Notes page.\n```",
+          "What is on my calendar today?\n\n```context\nThe user is looking at the week of 2026-09-28.\n```",
         );
         expect(start.runtimePolicy.cwd).toMatch(/agent-workspace$/);
         const mcp = McpProviderSession.readMcpProviderSession(thread.threadId);
         expect(mcp?.serverName).toBe(McpProviderSession.MCP_SERVER_NAME);
-        expect(mcp?.readOnlyToolNames).toContain("notes_list");
-        expect(mcp?.instructions).toContain("notes_create");
+        expect(mcp?.readOnlyToolNames).toContain("calendar_list_events");
+        expect(mcp?.instructions).toContain("calendar_create_event");
 
         const providerTurnId = yield* emitTurnStarted(provider, start);
         const now = yield* DateTime.now;
@@ -280,7 +280,7 @@ it.effect("runs a message through the provider and streams the answer", () =>
         yield* Queue.offer(provider.events, {
           type: "turn_item.updated",
           driver,
-          turnItem: assistantItem(start, providerTurnId, "You have two notes.", false, now),
+          turnItem: assistantItem(start, providerTurnId, "You have two meetings.", false, now),
         });
         yield* Queue.offer(provider.events, terminal(start, providerTurnId, "completed"));
         yield* events.until(isTurn("completed"));
@@ -288,8 +288,8 @@ it.effect("runs a message through the provider and streams the answer", () =>
         const detail = (yield* watch(agent, thread.threadId)).snapshot;
         expect(detail.thread).toMatchObject({
           status: "idle",
-          title: "Summarize my notes",
-          preview: "You have two notes.",
+          title: "What is on my calendar today?",
+          preview: "You have two meetings.",
         });
         expect(detail.turns.map((turn) => turn.status)).toEqual(["completed"]);
         expect(detail.items.map((item) => item.type)).toEqual([
@@ -298,7 +298,9 @@ it.effect("runs a message through the provider and streams the answer", () =>
         ]);
         const [userItem] = detail.items;
         // The context goes to the provider, not into the user's message.
-        expect(userItem?.type === "user_message" ? userItem.text : null).toBe("Summarize my notes");
+        expect(userItem?.type === "user_message" ? userItem.text : null).toBe(
+          "What is on my calendar today?",
+        );
       }),
     );
   }).pipe(Effect.provide(StorageLayer)),

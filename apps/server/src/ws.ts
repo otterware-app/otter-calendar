@@ -46,6 +46,7 @@ import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
 import { requiredScopeForRpcMethod } from "./auth/RpcAuthorization.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
+import { CalendarService } from "./calendar/CalendarService.ts";
 import * as ServerSelfUpdate from "./cloud/selfUpdate.ts";
 import * as ServerConfig from "./config.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
@@ -53,7 +54,6 @@ import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as EnvironmentTheme from "./environmentTheme.ts";
 import * as Keybindings from "./keybindings.ts";
-import { NotesService } from "./notes/NotesService.ts";
 import {
   observeRpcEffect as instrumentRpcEffect,
   observeRpcStream as instrumentRpcStream,
@@ -224,7 +224,7 @@ const makeWsRpcLayer = (currentSession: EnvironmentAuth.AuthenticatedSession) =>
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
       const relayClient = yield* RelayClient.RelayClient;
       const agent = yield* AgentService;
-      const notes = yield* NotesService;
+      const calendar = yield* CalendarService;
       // Handoff and callback streams need the connection's platform services.
       const handoffContext =
         yield* Effect.context<Effect.Services<ReturnType<typeof subscribeChatGptHandoff>>>();
@@ -524,7 +524,7 @@ const makeWsRpcLayer = (currentSession: EnvironmentAuth.AuthenticatedSession) =>
       const provider = { "rpc.aggregate": "provider" } as const;
       const cloud = { "rpc.aggregate": "cloud" } as const;
       const agentAggregate = { "rpc.aggregate": "agent" } as const;
-      const notesAggregate = { "rpc.aggregate": "notes" } as const;
+      const calendarAggregate = { "rpc.aggregate": "calendar" } as const;
 
       return WsRpcGroup.of({
         // Server meta
@@ -749,15 +749,104 @@ const makeWsRpcLayer = (currentSession: EnvironmentAuth.AuthenticatedSession) =>
             "agent.thread_id": input.threadId,
           }),
 
-        // Notes
-        [WS_METHODS.notesCreate]: (input) =>
-          observeRpcEffect(WS_METHODS.notesCreate, notes.create(input), notesAggregate),
-        [WS_METHODS.notesUpdate]: (input) =>
-          observeRpcEffect(WS_METHODS.notesUpdate, notes.update(input), notesAggregate),
-        [WS_METHODS.notesDelete]: (input) =>
-          observeRpcEffect(WS_METHODS.notesDelete, notes.remove(input.noteId), notesAggregate),
-        [WS_METHODS.notesSubscribe]: () =>
-          observeRpcStream(WS_METHODS.notesSubscribe, notes.stream, notesAggregate),
+        // Calendar
+        [WS_METHODS.calendarSubscribeDirectory]: () =>
+          observeRpcStream(
+            WS_METHODS.calendarSubscribeDirectory,
+            calendar.directory,
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarSubscribeWeek]: (input) =>
+          observeRpcStream(WS_METHODS.calendarSubscribeWeek, calendar.week(input), {
+            ...calendarAggregate,
+            "calendar.week": input.week,
+          }),
+        [WS_METHODS.calendarGetEvent]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarGetEvent,
+            calendar.getEvent(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarSearch]: (input) =>
+          observeRpcEffect(WS_METHODS.calendarSearch, calendar.search(input), calendarAggregate),
+        [WS_METHODS.calendarCreateEvent]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarCreateEvent,
+            calendar.createEvent(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarUpdateEvent]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarUpdateEvent,
+            calendar.updateEvent(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarDeleteEvent]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarDeleteEvent,
+            calendar.deleteEvent(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarRespond]: (input) =>
+          observeRpcEffect(WS_METHODS.calendarRespond, calendar.respond(input), calendarAggregate),
+        [WS_METHODS.calendarRestoreEvent]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarRestoreEvent,
+            calendar.restoreEvent(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarApplyChanges]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarApplyChanges,
+            calendar.applyChanges(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarUpdateCalendar]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarUpdateCalendar,
+            calendar.updateCalendar(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarUpdatePreferences]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarUpdatePreferences,
+            calendar.updatePreferences(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarSync]: (input) =>
+          observeRpcEffect(WS_METHODS.calendarSync, calendar.sync(input), calendarAggregate),
+        [WS_METHODS.calendarRemoveAccount]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarRemoveAccount,
+            calendar.removeAccount(input.accountId),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarAddDemo]: (input) =>
+          observeRpcEffect(WS_METHODS.calendarAddDemo, calendar.addDemo(input), calendarAggregate),
+        [WS_METHODS.calendarGoogleConnect]: (input) =>
+          observeRpcStream(
+            WS_METHODS.calendarGoogleConnect,
+            calendar.connect(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarGoogleConnectComplete]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarGoogleConnectComplete,
+            calendar.connectComplete(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarGoogleSetClient]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.calendarGoogleSetClient,
+            calendar.setClient(input),
+            calendarAggregate,
+          ),
+        [WS_METHODS.calendarGoogleClearClient]: () =>
+          observeRpcEffect(
+            WS_METHODS.calendarGoogleClearClient,
+            calendar.clearClient,
+            calendarAggregate,
+          ),
 
         // Subscriptions
         [WS_METHODS.subscribeServerConfig]: (input) =>

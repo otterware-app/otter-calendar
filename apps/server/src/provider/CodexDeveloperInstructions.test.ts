@@ -62,11 +62,11 @@ describe("buildCodexAdditionalContext", () => {
   it("carries the app's instructions next to the runtime info", () => {
     const context = buildCodexAdditionalContext(
       { model: "gpt-5.3-codex", reasoningEffort: "high" },
-      "<app_instructions>Use the notes tools.</app_instructions>",
+      "<app_instructions>Use the calendar tools.</app_instructions>",
     );
     NodeAssert.equal(
       context.app_instructions?.value,
-      "<app_instructions>Use the notes tools.</app_instructions>",
+      "<app_instructions>Use the calendar tools.</app_instructions>",
     );
     NodeAssert.match(context.app_runtime?.value ?? "", /<runtime_info>/);
   });

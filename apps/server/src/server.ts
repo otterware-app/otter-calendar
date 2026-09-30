@@ -28,6 +28,8 @@ import * as ReplayMarkers from "./auth/replayMarkers.ts";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as HostPowerMonitor from "./background/HostPowerMonitor.ts";
+import * as CalendarServiceLive from "./calendar/CalendarServiceLive.ts";
+import * as GoogleAuthLive from "./calendar/google/GoogleAuthLive.ts";
 import * as CloudCliState from "./cloud/CliState.ts";
 import * as CloudCliTokenManager from "./cloud/CliTokenManager.ts";
 import {
@@ -68,7 +70,6 @@ import { guardHttpResponseWriteErrors } from "./httpResponseErrorGuard.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
-import * as NotesServiceLive from "./notes/NotesServiceLive.ts";
 import * as EventLoopMonitor from "./observability/EventLoopMonitor.ts";
 import * as HeapSnapshot from "./observability/HeapSnapshot.ts";
 import { ObservabilityLive } from "./observability/Layers/Observability.ts";
@@ -202,7 +203,9 @@ const ProviderLayerLive = Layer.mergeAll(
  * (`ProviderInstanceRegistry`, `ProviderAdapterRegistryV2`,
  * `ProviderSessionRelease`, …), and `McpSessionRegistry`.
  */
-const FeaturesLayerLive = Layer.mergeAll(AgentServiceLive.layer, NotesServiceLive.layer);
+const CalendarLayerLive = CalendarServiceLive.layer.pipe(Layer.provide(GoogleAuthLive.layer));
+
+const FeaturesLayerLive = Layer.mergeAll(AgentServiceLive.layer, CalendarLayerLive);
 
 const RuntimeDependenciesLive = FeaturesLayerLive.pipe(
   Layer.provideMerge(ProviderLayerLive),

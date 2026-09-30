@@ -470,7 +470,7 @@ describe("CodexAdapterV2 runtime policy", () => {
     Effect.gen(function* () {
       const params = yield* buildCodexTurnStartParams({
         nativeThreadId: "native-app-instructions",
-        codexInput: [{ type: "text", text: "summarize my notes" }],
+        codexInput: [{ type: "text", text: "what is on my calendar today" }],
         runtimePolicy: {
           runtimeMode: "full-access",
           interactionMode: "default",
@@ -480,7 +480,7 @@ describe("CodexAdapterV2 runtime policy", () => {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5.4",
         },
-        appInstructions: "Use the notes tools to answer questions about notes.",
+        appInstructions: "Use the calendar tools to answer questions about the calendar.",
       });
 
       assert.equal(params.collaborationMode?.mode, "default");
@@ -490,7 +490,7 @@ describe("CodexAdapterV2 runtime policy", () => {
       );
       assert.deepEqual(params.additionalContext?.app_instructions, {
         kind: "application",
-        value: "Use the notes tools to answer questions about notes.",
+        value: "Use the calendar tools to answer questions about the calendar.",
       });
       assert.include(params.additionalContext?.app_runtime?.value ?? "", "Codex harness");
     }),
@@ -531,7 +531,7 @@ describe("CodexAdapterV2 runtime policy", () => {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5.4",
         },
-        appInstructions: "Use the notes tools to answer questions about notes.",
+        appInstructions: "Use the calendar tools to answer questions about the calendar.",
       });
 
       assert.equal(params.collaborationMode?.mode, "plan");
@@ -541,7 +541,7 @@ describe("CodexAdapterV2 runtime policy", () => {
       );
       assert.equal(
         params.additionalContext?.app_instructions?.value,
-        "Use the notes tools to answer questions about notes.",
+        "Use the calendar tools to answer questions about the calendar.",
       );
     }),
   );
@@ -628,7 +628,7 @@ describe("CodexAdapterV2 process spawning", () => {
       endpoint: "http://127.0.0.1:43123/mcp",
       authorizationHeader: "Bearer secret-codex-token",
       readOnlyToolNames: [],
-      instructions: "Use the notes tools to answer questions about notes.",
+      instructions: "Use the calendar tools to answer questions about the calendar.",
     });
 
     try {
@@ -2346,11 +2346,11 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           codexInput: [{ type: "text", text: "work" }],
           runtimePolicy: CODEX_TEST_RUNTIME_POLICY,
           modelSelection: CODEX_TEST_MODEL_SELECTION,
-          appInstructions: "Use the notes tools to answer questions about notes.",
+          appInstructions: "Use the calendar tools to answer questions about the calendar.",
         });
         assert.equal(
           params.additionalContext?.app_instructions?.value,
-          "Use the notes tools to answer questions about notes.",
+          "Use the calendar tools to answer questions about the calendar.",
         );
         const entries = codexReplayPreamble({ nativeThreadId, nativeTurnId, prompt: "work" });
         const transcript = makeCodexReplayTranscript({
@@ -2415,7 +2415,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           endpoint: "http://127.0.0.1:43123/mcp",
           authorizationHeader: "Bearer test",
           readOnlyToolNames: [],
-          instructions: "Use the notes tools to answer questions about notes.",
+          instructions: "Use the calendar tools to answer questions about the calendar.",
         });
         yield* Effect.addFinalizer(() =>
           Effect.sync(() =>
