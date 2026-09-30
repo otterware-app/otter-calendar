@@ -30,6 +30,8 @@ const { values: args } = NodeUtil.parseArgs({
     "keep-home": { type: "boolean", default: false },
     out: { type: "string", default: "scripts/perf/results/latest.json" },
     headed: { type: "boolean", default: false },
+    /** Hide all but this many calendars (through the sidebar), for a less dense scenario. */
+    "visible-calendars": { type: "string" },
   },
 });
 
@@ -133,10 +135,21 @@ async function installObservers(page: Page): Promise<void> {
         longTasks: Array<{ start: number; duration: number }>;
         frames: Array<number>;
         recording: boolean;
+        keys: Array<number>;
       };
     };
     if (w.__perf) return;
-    w.__perf = { longTasks: [], frames: [], recording: false };
+    w.__perf = { longTasks: [], frames: [], recording: false, keys: [] };
+    // Event Timing (what INP measures): from the key press to the next paint after handling it.
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.name === "keydown") w.__perf.keys.push(entry.duration);
+      }
+    }).observe({
+      type: "event",
+      durationThreshold: 16,
+      buffered: false,
+    } as PerformanceObserverInit);
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         w.__perf.longTasks.push({ start: entry.startTime, duration: entry.duration });
@@ -155,25 +168,39 @@ async function installObservers(page: Page): Promise<void> {
 async function record<T>(page: Page, run: () => Promise<T>) {
   await page.evaluate(() => {
     const w = window as unknown as {
-      __perf: { longTasks: Array<unknown>; frames: Array<number>; recording: boolean };
+      __perf: {
+        longTasks: Array<unknown>;
+        frames: Array<number>;
+        recording: boolean;
+        keys: Array<number>;
+      };
     };
     w.__perf.longTasks = [];
     w.__perf.frames = [];
+    w.__perf.keys = [];
     w.__perf.recording = true;
   });
   const result = await run();
   const captured = await page.evaluate(() => {
     const w = window as unknown as {
-      __perf: { longTasks: Array<{ duration: number }>; frames: Array<number>; recording: boolean };
+      __perf: {
+        longTasks: Array<{ duration: number }>;
+        frames: Array<number>;
+        recording: boolean;
+        keys: Array<number>;
+      };
     };
     w.__perf.recording = false;
     return {
       longTasks: w.__perf.longTasks.map((task) => task.duration),
       frames: w.__perf.frames.slice(1),
+      keys: [...w.__perf.keys],
     };
   });
   return {
     result,
+    /** Key press to next paint (Event Timing; entries under 16 ms are not reported). */
+    keyToPaintMs: stats(captured.keys),
     frames: stats(captured.frames),
     droppedFrames: captured.frames.filter((frame) => frame > 20).length,
     longTasks: {
@@ -236,6 +263,18 @@ async function main() {
     );
     await settled(page, 180_000);
     results.firstSyncAndRenderMs = Date.now() - pairStart;
+
+    const keepVisible = args["visible-calendars"];
+    if (keepVisible !== undefined) {
+      const rows = page.locator("[data-calendar-row]");
+      const count = await rows.count();
+      for (let index = Number(keepVisible); index < count; index += 1) {
+        await rows.nth(index).getByRole("checkbox").click();
+      }
+      await page.waitForTimeout(1500);
+      await settled(page);
+      results.visibleCalendars = Number(keepVisible);
+    }
     await installObservers(page);
 
     const today = new Date().toISOString().slice(0, 10);

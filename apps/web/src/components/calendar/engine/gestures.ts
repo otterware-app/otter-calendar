@@ -112,13 +112,46 @@ export class PointerGestures {
     root.addEventListener("pointerdown", this.onPointerDown);
     root.addEventListener("click", this.onClickCapture, true);
     root.addEventListener("contextmenu", this.onContextMenu);
+    root.addEventListener("pointermove", this.onHover, { passive: true });
+    root.addEventListener("pointerleave", this.onHoverEnd);
   }
+
+  private hovered: HTMLElement | null = null;
+
+  /**
+   * The resize cursor over an event's edge bands. It is set on the one hovered block rather than
+   * drawn with pseudo-elements on every block, which would double the style work of a dense grid.
+   */
+  private onHover = (event: PointerEvent) => {
+    if (this.session !== null || event.pointerType !== "mouse") return;
+    const target = event.target instanceof Element ? event.target : null;
+    const element =
+      target?.closest<HTMLElement>("[data-calendar-event]:not([data-readonly])") ?? null;
+    let cursor = "";
+    if (element !== null && target !== null) {
+      const allDay =
+        element.hasAttribute("data-all-day") || this.root.dataset.calendarSurface === "month";
+      const edge = pressedEdge(target, element, event.clientX, event.clientY, event, allDay);
+      if (edge !== null) cursor = element.hasAttribute("data-timed") ? "ns-resize" : "ew-resize";
+    }
+    if (this.hovered !== null && this.hovered !== element) this.hovered.style.cursor = "";
+    this.hovered = element;
+    if (element !== null && element.style.cursor !== cursor) element.style.cursor = cursor;
+  };
+
+  private onHoverEnd = () => {
+    if (this.hovered !== null) this.hovered.style.cursor = "";
+    this.hovered = null;
+  };
 
   dispose(): void {
     this.cancel();
     this.root.removeEventListener("pointerdown", this.onPointerDown);
     this.root.removeEventListener("click", this.onClickCapture, true);
     this.root.removeEventListener("contextmenu", this.onContextMenu);
+    this.root.removeEventListener("pointermove", this.onHover);
+    this.root.removeEventListener("pointerleave", this.onHoverEnd);
+    this.onHoverEnd();
   }
 
   /** Whether a drag is in progress (views skip keyboard handling meanwhile). */

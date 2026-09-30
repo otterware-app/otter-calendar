@@ -19,7 +19,6 @@ import {
   calendarEventKey,
 } from "@t3tools/contracts";
 import { type DayNumber, DAY_MS, formatDayNumber, toZoned } from "@t3tools/shared/calendar/time";
-import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAgentPageContext } from "../../agentPanelStore";
@@ -49,7 +48,6 @@ import {
   AGENDA_DAYS,
   type CalendarRange,
   type CalendarViewKind,
-  DEFAULT_CALENDAR_VIEW,
   calendarRange,
   defaultCalendarId,
   defaultDraft,
@@ -276,8 +274,16 @@ function CalendarBody({
   );
 }
 
-export function CalendarPage({ view, date }: { view: CalendarViewKind; date: DayNumber | null }) {
-  const navigate = useNavigate();
+export function CalendarPage({
+  view,
+  date,
+  onShow,
+}: {
+  view: CalendarViewKind;
+  date: DayNumber | null;
+  /** Shows a view and date at once; the route updates the URL after. */
+  onShow: (view: CalendarViewKind, date: DayNumber | null, options: { replace: boolean }) => void;
+}) {
   const { environmentId, directory, isLoading, preferences, timeZone, today } =
     useCalendarContext();
   const anchor = date ?? today;
@@ -298,16 +304,9 @@ export function CalendarPage({ view, date }: { view: CalendarViewKind; date: Day
     (day: DayNumber, options: { view?: CalendarViewKind; replace?: boolean } = {}) => {
       const nextView = options.view ?? view;
       readCalendarUi().closePopover();
-      void navigate({
-        to: "/calendar",
-        search: {
-          ...(nextView === DEFAULT_CALENDAR_VIEW ? {} : { view: nextView }),
-          ...(day === today ? {} : { date: formatDayNumber(day) }),
-        },
-        replace: options.replace ?? false,
-      });
+      onShow(nextView, day === today ? null : day, { replace: options.replace ?? false });
     },
-    [navigate, today, view],
+    [onShow, today, view],
   );
 
   const runCommand = useCallback(

@@ -293,26 +293,8 @@
   border-end-end-radius: 0;
 }
 
-/* Resize edges only show the cursor; the gesture controller hit-tests the same bands by the
-   pointer's offset in the block (6 px, or 12 px on a selected block with touch). */
-[data-calendar-event][data-timed]:not([data-readonly], [data-continues-after])::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 6px;
-  cursor: ns-resize;
-}
-
-[data-calendar-event][data-timed]:not([data-readonly], [data-continues-before])
-  > [data-event-title]::before {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 6px;
-  cursor: ns-resize;
-}
+/* Resize edges have no elements: the gesture controller hit-tests bands by the pointer's offset
+   in the block (6 px, or 12 px on a selected block with touch) and sets the hover cursor. */
 
 /* ── Bars: all-day lane and month multi-day events ── */
 
@@ -349,33 +331,6 @@
 [data-calendar-event][data-bar][data-continues-after] {
   border-start-end-radius: 0;
   border-end-end-radius: 0;
-}
-
-[data-calendar-event][data-bar][data-all-day]:not([data-readonly], [data-continues-after])::after {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 0;
-  width: 6px;
-  cursor: ew-resize;
-}
-
-@media (pointer: coarse) {
-  /* On touch, only the selected event can be resized, with wider edges. */
-  [data-calendar-event][data-timed]:not([data-selected])::after,
-  [data-calendar-event][data-timed]:not([data-selected]) > [data-event-title]::before,
-  [data-calendar-event][data-bar]:not([data-selected])::after {
-    content: none;
-  }
-
-  [data-calendar-event][data-timed]::after,
-  [data-calendar-event][data-timed] > [data-event-title]::before {
-    height: 12px;
-  }
-
-  [data-calendar-event][data-bar]::after {
-    width: 14px;
-  }
 }
 
 /* ── Month chips: single-day timed events as a dot, the time and the title, no fill ── */
