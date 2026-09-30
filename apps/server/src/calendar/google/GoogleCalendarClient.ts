@@ -24,6 +24,7 @@ import {
   type RemoteCalendarsPage,
   type RemoteEvent,
   type RemoteEventsPage,
+  type RemoteEventWrite,
   type WriteOptions,
 } from "../providers/CalendarProvider.ts";
 
@@ -136,6 +137,25 @@ const asItems = <A>(body: Json): Effect.Effect<ReadonlyArray<A>, CalendarProvide
 };
 
 /** Seconds or an HTTP date, as milliseconds from `now`. */
+/**
+ * `events.patch` merges nested objects, so switching an event between timed and all-day must
+ * clear the other form explicitly: `{ date }` alone would keep the old `dateTime`.
+ */
+export function patchBody(patch: RemoteEventWrite): Record<string, unknown> {
+  const body: Record<string, unknown> = { ...patch };
+  for (const key of ["start", "end"] as const) {
+    const value = patch[key];
+    if (value === undefined) continue;
+    body[key] =
+      value.date !== undefined
+        ? { ...value, dateTime: null, timeZone: null }
+        : value.dateTime !== undefined
+          ? { ...value, date: null }
+          : value;
+  }
+  return body;
+}
+
 export function parseRetryAfter(value: string | undefined, now: number): number | undefined {
   if (value === undefined) return undefined;
   const trimmed = value.trim();
@@ -389,7 +409,7 @@ export function makeGoogleCalendarClient(
             fields: SINGLE_EVENT_FIELDS,
             ...updates(options),
           }),
-          HttpClientRequest.bodyJsonUnsafe(patch),
+          HttpClientRequest.bodyJsonUnsafe(patchBody(patch)),
         ),
       ).pipe(Effect.flatMap(asEvent), Effect.withSpan("GoogleCalendarClient.patchEvent")),
 

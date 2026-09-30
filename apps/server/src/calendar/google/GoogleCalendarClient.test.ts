@@ -9,6 +9,7 @@ import {
   CALENDARS_PAGE_FIELDS,
   makeGoogleCalendarClient,
   parseRetryAfter,
+  patchBody,
 } from "./GoogleCalendarClient.ts";
 import type { RemoteEvent } from "../providers/CalendarProvider.ts";
 
@@ -294,5 +295,20 @@ describe("parseRetryAfter", () => {
     expect(parseRetryAfter("Wed, 30 Sep 2026 12:00:10 GMT", now)).toBe(10_000);
     expect(parseRetryAfter("soon", now)).toBeUndefined();
     expect(parseRetryAfter(undefined, now)).toBeUndefined();
+  });
+});
+
+describe("patchBody", () => {
+  it("clears the other time form when an event switches between timed and all-day", () => {
+    expect(patchBody({ start: { date: "2026-10-01" }, end: { date: "2026-10-02" } })).toEqual({
+      start: { date: "2026-10-01", dateTime: null, timeZone: null },
+      end: { date: "2026-10-02", dateTime: null, timeZone: null },
+    });
+    expect(
+      patchBody({ start: { dateTime: "2026-10-01T09:00:00+02:00", timeZone: "Europe/Berlin" } }),
+    ).toEqual({
+      start: { dateTime: "2026-10-01T09:00:00+02:00", timeZone: "Europe/Berlin", date: null },
+    });
+    expect(patchBody({ summary: "Hi" })).toEqual({ summary: "Hi" });
   });
 });
