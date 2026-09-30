@@ -13,9 +13,9 @@ summary of its trace file (failures, slow spans, span logs), and copies the logs
 
 ## Where things are
 
-Runtime state lives in the state directory: `<home>/userdata` (`~/.otter-scaffold/userdata` by
+Runtime state lives in the state directory: `<home>/userdata` (`~/.otter-calendar/userdata` by
 default, or under `--base-dir` / `T3CODE_HOME`). A dev run from the main checkout uses
-`~/.otter-scaffold/dev`; a dev run in a linked worktree uses `<worktree>/.t3/userdata`. Inside it:
+`~/.otter-calendar/dev`; a dev run in a linked worktree uses `<worktree>/.t3/userdata`. Inside it:
 
 | Path                       | Contents                                                 |
 | -------------------------- | -------------------------------------------------------- |
@@ -24,7 +24,7 @@ default, or under `--base-dir` / `T3CODE_HOME`). A dev run from the main checkou
 | `logs/boot-service.log`    | stdout and stderr of the background service              |
 | `server-runtime.json`      | The running server's pid and port                        |
 
-An SSH-launched server writes its stdout and stderr to `~/.otter-scaffold/ssh-launch/<key>/server.log`
+An SSH-launched server writes its stdout and stderr to `~/.otter-calendar/ssh-launch/<key>/server.log`
 on the remote host. There is no other server log file: a log message reaches the trace file only
 when it is emitted inside a span, where `Logger.tracerLogger` attaches it as a span event.
 
@@ -38,7 +38,7 @@ Each line is an `effect-span` or `otlp-span` record with `name`, `traceId`, `spa
 (`Success`, `Failure`, or `Interrupted`). The schemas live in
 [`packages/shared/src/observability.ts`](../../packages/shared/src/observability.ts).
 
-`t3 trace summary` (`otter-scaffold trace summary` when installed) reads the file and its rotated
+`t3 trace summary` (`otter-calendar trace summary` when installed) reads the file and its rotated
 backups directly, so it works while the server is stalled or stopped. It prints counts, rates, and
 latency percentiles per span name:
 
@@ -52,7 +52,7 @@ run or a copied file, set `T3CODE_TRACE_FILE`.
 A few `jq` starting points:
 
 ```bash
-TRACE_FILE="${T3CODE_HOME:-$HOME/.otter-scaffold}/userdata/logs/server.trace.ndjson"
+TRACE_FILE="${T3CODE_HOME:-$HOME/.otter-calendar}/userdata/logs/server.trace.ndjson"
 
 # Failed spans
 jq -c 'select(.type == "effect-span" and .exit._tag != "Success") | {name, durationMs, exit, attributes}' "$TRACE_FILE"
@@ -105,7 +105,7 @@ vp run dev   # or vp run dev:desktop, or the installed CLI
 ```
 
 For the packaged desktop app, launch its executable from that shell, for example
-`"/Applications/Otter Scaffold.app/Contents/MacOS/Otter Scaffold"`; apps launched from Finder or the
+`"/Applications/Otter Calendar.app/Contents/MacOS/Otter Calendar"`; apps launched from Finder or the
 Dock do not inherit shell variables. The server reads this configuration at start, so restart it
 fully after a change. The endpoints can also be set in `settings.json` under `observability`
 (`otlpTracesUrl`, `otlpMetricsUrl`, `otlpLogsUrl`).
@@ -161,7 +161,7 @@ in `server-runtime.json`, and check it first: a stale file can name a different 
 desktop app or service launcher exits on `SIGUSR2`.
 
 ```bash
-pid="$(jq .pid "${T3CODE_HOME:-$HOME/.otter-scaffold}/userdata/server-runtime.json")"
+pid="$(jq .pid "${T3CODE_HOME:-$HOME/.otter-calendar}/userdata/server-runtime.json")"
 ps -p "$pid" -o command=
 kill -USR2 "$pid"
 ```

@@ -200,7 +200,7 @@ jobs:
             echo "release_channel=stable" >> "$GITHUB_OUTPUT"
             echo "version=$version" >> "$GITHUB_OUTPUT"
             echo "tag=v$version" >> "$GITHUB_OUTPUT"
-            echo "name=Otter Scaffold v$version" >> "$GITHUB_OUTPUT"
+            echo "name=Otter Calendar v$version" >> "$GITHUB_OUTPUT"
             echo "cli_dist_tag=latest" >> "$GITHUB_OUTPUT"
             if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
@@ -385,7 +385,7 @@ jobs:
             echo "::notice::No relay deployment configured (CLOUDFLARE_ACCOUNT_ID is not set); building without relay tracing."
             exit 0
           fi
-          output="$(npx alchemy state read OtterScaffoldRelay/prod/output --backend cloudflare --log-level error --no-input | sed -n '/^{/,$p')"
+          output="$(npx alchemy state read OtterCalendarRelay/prod/output --backend cloudflare --log-level error --no-input | sed -n '/^{/,$p')"
           field() {
             jq -r --arg key "$1" '.[$key] | if type == "object" then .__redacted__ else . end | select(. != null) // ""' <<<"$output"
           }
@@ -616,7 +616,7 @@ jobs:
       - name: Check npm publish access (dry run)
         run: |
           if ! node apps/server/scripts/cli.ts publish --packages-dir npm-packages --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --provenance --dry-run --verbose; then
-            echo "::error::npm publish --dry-run failed. Make sure the @otterware npm scope exists and that otter-scaffold and every @otterware/otter-scaffold-<platform> package has a trusted publisher registered for .github/workflows/release.yml, or that NPM_TOKEN can publish them (see docs/operations/release.md)." >&2
+            echo "::error::npm publish --dry-run failed. Make sure the @otterware npm scope exists and that otter-calendar and every @otterware/otter-calendar-<platform> package has a trusted publisher registered for .github/workflows/release.yml, or that NPM_TOKEN can publish them (see docs/operations/release.md)." >&2
             exit 1
           fi
 
@@ -625,7 +625,7 @@ jobs:
 
       - name: Tag nightly as latest
         if: needs.preflight.outputs.release_channel == 'nightly'
-        run: npm dist-tag add "otter-scaffold@${{ needs.preflight.outputs.version }}" latest
+        run: npm dist-tag add "otter-calendar@${{ needs.preflight.outputs.version }}" latest
 
   release:
     name: Publish GitHub Release
@@ -726,7 +726,7 @@ jobs:
           > [!WARNING]
           > **This is a preview build. Do not install it unless you know exactly why you are here.**
           >
-          > Preview builds are cut by maintainers from unreleased branches to exercise the release pipeline. They can be broken, receive no fixes, are never offered as updates, and are not supported. If you want Otter Scaffold, install the [latest release](https://github.com/otterware-app/otter-scaffold/releases/latest) or a nightly instead.
+          > Preview builds are cut by maintainers from unreleased branches to exercise the release pipeline. They can be broken, receive no fixes, are never offered as updates, and are not supported. If you want Otter Calendar, install the [latest release](https://github.com/otterware-app/otter-calendar/releases/latest) or a nightly instead.
 
           Built from `${{ needs.preflight.outputs.ref }}`.
           EOF
@@ -854,9 +854,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          router_url="${T3CODE_WEB_ROUTER_URL:-https://scaffold.otterware.dev}"
-          latest_domain="${T3CODE_WEB_LATEST_DOMAIN:-latest.scaffold.otterware.dev}"
-          nightly_domain="${T3CODE_WEB_NIGHTLY_DOMAIN:-nightly.scaffold.otterware.dev}"
+          router_url="${T3CODE_WEB_ROUTER_URL:-https://calendar.otterware.dev}"
+          latest_domain="${T3CODE_WEB_LATEST_DOMAIN:-latest.calendar.otterware.dev}"
+          nightly_domain="${T3CODE_WEB_NIGHTLY_DOMAIN:-nightly.calendar.otterware.dev}"
           router_domain="${router_url#http://}"
           router_domain="${router_domain#https://}"
           router_domain="${router_domain%%/*}"

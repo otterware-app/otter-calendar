@@ -5,15 +5,15 @@
 The relay's Alchemy stack provisions one Axiom trace setup per stage. Names start with
 `BRAND.slug` and end with the sanitized stage name; for this repository's `prod` stage:
 
-- `otter-scaffold-relay-traces-prod`, the OpenTelemetry trace dataset shared by the Worker, the
+- `otter-calendar-relay-traces-prod`, the OpenTelemetry trace dataset shared by the Worker, the
   mobile app, and first-party relay clients (30-day retention)
-- `otter-scaffold-relay-otel-ingest-prod`, the Worker's dataset-scoped ingest token
-- `otter-scaffold-mobile-otel-ingest-prod`, the mobile app's ingest token
-- `otter-scaffold-relay-client-otel-ingest-prod`, the ingest token for relay calls from the server
+- `otter-calendar-relay-otel-ingest-prod`, the Worker's dataset-scoped ingest token
+- `otter-calendar-mobile-otel-ingest-prod`, the mobile app's ingest token
+- `otter-calendar-relay-client-otel-ingest-prod`, the ingest token for relay calls from the server
   and web client
-- `otter-scaffold-relay-recent-spans-prod`, a view of recent request spans
+- `otter-calendar-relay-recent-spans-prod`, a view of recent request spans
 
-A personal stage uses its own suffix, for example `otter-scaffold-relay-traces-dev-julius`.
+A personal stage uses its own suffix, for example `otter-calendar-relay-traces-dev-julius`.
 Alchemy uses the account-level `AXIOM_TOKEN` and `AXIOM_ORG_ID` to provision; at runtime each
 producer gets only its scoped, write-only ingest token. Deploying writes the client tokens into the
 root `.env` for source builds, and the release workflow reads them from the stack's state.
@@ -22,7 +22,7 @@ The Worker emits Effect's HTTP server spans plus endpoint and database child spa
 attributes sit under `attributes.`, relay-specific annotations under `attributes.custom`:
 
 ```apl
-['otter-scaffold-relay-traces-prod']
+['otter-calendar-relay-traces-prod']
 | where name startswith 'http.server'
 | extend endpoint = column_ifexists('attributes.http.route', ''),
     customAttributes = column_ifexists('attributes.custom', dynamic({}))

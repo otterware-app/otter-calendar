@@ -7,7 +7,7 @@ for local development: without it, clients build with cloud features off.
 
 Values below come from [`brand.ts`](../../packages/shared/src/brand.ts): `<scheme>` is
 `BRAND.urlScheme`, `<appId>` is `BRAND.appId`, and `<slug>` is `BRAND.slug`; in this repository,
-`otterscaffold`, `dev.otterware.scaffold`, and `otter-scaffold`.
+`ottercalendar`, `dev.otterware.calendar`, and `otter-calendar`.
 
 ## Public application configuration
 
@@ -117,7 +117,7 @@ ports, for example with the default ports:
 ```sh
 VITE_DEV_SERVER_URL=http://127.0.0.1:5733 \
 T3CODE_PORT=13773 \
-  "/Applications/Otter Scaffold.app/Contents/MacOS/Otter Scaffold"
+  "/Applications/Otter Calendar.app/Contents/MacOS/Otter Calendar"
 ```
 
 Rebuild the signed app after native dependency, main-process, preload, entitlement, provisioning,

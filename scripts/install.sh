@@ -2,7 +2,7 @@
 # Installs the app's CLI from a GitHub Release archive. Needs only sh, tar,
 # sha256sum or shasum, and curl or wget; no Node, npm, or compiler.
 #
-#   curl -fsSL https://raw.githubusercontent.com/otterware-app/otter-scaffold/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/otterware-app/otter-calendar/main/scripts/install.sh | sh
 #
 # Environment:
 #   T3CODE_CHANNEL           release train to follow: stable, nightly, or preview
@@ -19,10 +19,10 @@ set -eu
 
 # The app's identity, from packages/shared/src/brand.ts. This file cannot
 # import it, so scripts/rebrand.ts rewrites these values (and the URL above).
-app_name="Otter Scaffold"
-app_command="otter-scaffold"
-repo="otterware-app/otter-scaffold"
-home_dir_name=".otter-scaffold"
+app_name="Otter Calendar"
+app_command="otter-calendar"
+repo="otterware-app/otter-calendar"
+home_dir_name=".otter-calendar"
 
 base_url="${T3CODE_RELEASE_BASE_URL:-https://github.com/${repo}/releases/download}"
 t3_home="${T3CODE_HOME:-$HOME/${home_dir_name}}"

@@ -24,7 +24,7 @@ the nightly you verified. A tag push builds the tagged commit.
 Preview is the maintainers' test train for exercising the full pipeline on an unmerged branch. Its
 release carries a warning instead of notes, no updater manifests, and no hosted web deploy, so no
 installed app is ever offered it. People reach it only by asking: `T3CODE_CHANNEL=preview` for
-`install.sh` or `otter-scaffold update --channel preview`, both of which ask for confirmation.
+`install.sh` or `otter-calendar update --channel preview`, both of which ask for confirmation.
 
 There is no dry run. Every channel publishes a real release, and pushing any non-nightly tag
 (`v0.0.0-test.1` included) runs a stable release. Use CI for checks without publishing.

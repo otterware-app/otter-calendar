@@ -25,11 +25,11 @@ offers to update it: on the **Version** row for this machine, on the environment
 On the host itself, run:
 
 ```sh
-otter-scaffold update <version>
+otter-calendar update <version>
 ```
 
 It asks before restarting the background service; if you decline, run
-`otter-scaffold service restart` when you are ready. A server you started by hand keeps running;
+`otter-calendar service restart` when you are ready. A server you started by hand keeps running;
 stop it and start it again with your usual options, such as `--host` or `--tailscale-serve`.
 
 Updating restarts the server. Chats, notes, and settings are kept, but turns the agent was working

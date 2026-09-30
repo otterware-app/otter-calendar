@@ -29,8 +29,8 @@ Flags go directly after the task name, for example `vp run dev --home-dir /tmp/s
 ### State and ports
 
 Linked worktrees default to their own `.t3/userdata`, even when `T3CODE_HOME` is set. The main
-checkout defaults to `~/.otter-scaffold/dev`. An explicit `--home-dir` wins in both cases. Never run
-a development server against the installed app's `~/.otter-scaffold/userdata`; see
+checkout defaults to `~/.otter-calendar/dev`. An explicit `--home-dir` wins in both cases. Never run
+a development server against the installed app's `~/.otter-calendar/userdata`; see
 [test data](../../AGENTS.md#test-data) to copy a consistent snapshot of it instead.
 
 Read the ports from the `[dev-runner]` line. The main checkout uses 5733 (web) and 13773 (server);

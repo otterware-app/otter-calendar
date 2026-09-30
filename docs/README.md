@@ -1,6 +1,6 @@
-# Otter Scaffold docs
+# Otter Calendar docs
 
-## Using Otter Scaffold
+## Using Otter Calendar
 
 - [Install](./user/install.md)
 - [The assistant](./user/agent.md)
@@ -16,7 +16,7 @@
 
 ---
 
-## Working on Otter Scaffold
+## Working on Otter Calendar
 
 Start with [SCAFFOLD.md](../SCAFFOLD.md) (identity, starting a new app, external setup), the
 [development runbook](./operations/development.md), and the

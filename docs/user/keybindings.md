@@ -25,7 +25,7 @@ for multiline prompts, or `mod+Enter` always sends. Shift+Enter inserts a new li
 
 ## Edit the configuration file
 
-Shortcuts live on the environment's machine, in `~/.otter-scaffold/userdata/keybindings.json`
+Shortcuts live on the environment's machine, in `~/.otter-calendar/userdata/keybindings.json`
 (or `userdata/keybindings.json` under a custom home). You can edit the file directly. It is a JSON
 array of rules:
 

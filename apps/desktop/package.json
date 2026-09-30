@@ -32,5 +32,5 @@
     "electron-builder": "26.15.6",
     "vite-plus": "catalog:"
   },
-  "productName": "Otter Scaffold"
+  "productName": "Otter Calendar"
 }

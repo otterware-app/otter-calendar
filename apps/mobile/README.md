@@ -1,4 +1,4 @@
-# Otter Scaffold Mobile
+# Otter Calendar Mobile
 
 The Expo (React Native) app for iOS and Android. It connects to any environment, shows the Notes
 example and the agent, and shares its connection and feature state with the web app through
@@ -14,9 +14,9 @@ It uses native modules, so Expo Go does not work; use a development build. Run c
 
 | Variant       | App name               | Bundle ID / package              | Scheme                  |
 | ------------- | ---------------------- | -------------------------------- | ----------------------- |
-| `development` | Otter Scaffold Dev     | `dev.otterware.scaffold.dev`     | `otterscaffold-dev`     |
-| `preview`     | Otter Scaffold Preview | `dev.otterware.scaffold.preview` | `otterscaffold-preview` |
-| `production`  | Otter Scaffold         | `dev.otterware.scaffold`         | `otterscaffold`         |
+| `development` | Otter Calendar Dev     | `dev.otterware.calendar.dev`     | `ottercalendar-dev`     |
+| `preview`     | Otter Calendar Preview | `dev.otterware.calendar.preview` | `ottercalendar-preview` |
+| `production`  | Otter Calendar         | `dev.otterware.calendar`         | `ottercalendar`         |
 
 T3 Connect sign-in is optional and off in a fresh clone. Public configuration belongs in the
 repository-root `.env` or `.env.local`, not an `apps/mobile/.env`; see
@@ -64,7 +64,7 @@ builds leave out native Sign in with Apple:
 
 ```bash
 T3CODE_IOS_PERSONAL_TEAM=1 \
-T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID=com.example.otterscaffold.dev \
+T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID=com.example.ottercalendar.dev \
 vp run ios:dev
 ```
 

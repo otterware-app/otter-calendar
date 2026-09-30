@@ -1,6 +1,6 @@
 # Product usage data
 
-Otter Scaffold sends no usage data unless the environment is configured to. Product analytics are
+Otter Calendar sends no usage data unless the environment is configured to. Product analytics are
 off until `T3CODE_POSTHOG_KEY` is set in the server's environment; `T3CODE_POSTHOG_HOST` selects
 the PostHog instance (the US cloud by default).
 

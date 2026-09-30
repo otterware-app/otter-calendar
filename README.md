@@ -1,4 +1,4 @@
-# Otter Scaffold
+# Otter Calendar
 
 The starting point for Otterware apps: a local-first server with web, desktop and mobile
 clients, accounts and remote access through a relay, and an in-app agent that works with the

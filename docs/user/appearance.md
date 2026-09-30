@@ -21,7 +21,7 @@ your operating system.
 
 ## Custom themes
 
-On web and desktop, choose **Create theme** to adjust a palette, or import an Otter Scaffold or
+On web and desktop, choose **Create theme** to adjust a palette, or import an Otter Calendar or
 VS Code theme file. The theme editor's color picker lets you click an area of the app to find the
 color to change. Download a theme as JSON to share it.
 
@@ -39,18 +39,18 @@ its standard theme.
 Run this on the environment's machine to set a default and switch connected clients to it:
 
 ```bash
-otter-scaffold theme set nightfall
+otter-calendar theme set nightfall
 ```
 
 Clients that are offline apply it when they reconnect. Each client applies the default once;
 choosing another theme afterwards sticks until the next `theme set`. Run the command again to
-reapply it, even with the same name. `otter-scaffold theme clear` removes the default without
-changing anyone's current theme, and `otter-scaffold theme show` lists the default and the
+reapply it, even with the same name. `otter-calendar theme clear` removes the default without
+changing anyone's current theme, and `otter-calendar theme show` lists the default and the
 published themes.
 
 ### Publish a theme
 
-Save a theme downloaded from the app into `~/.otter-scaffold/userdata/themes/` on the environment's
+Save a theme downloaded from the app into `~/.otter-calendar/userdata/themes/` on the environment's
 machine, or the `userdata/themes` directory under a custom home. The filename is the theme's ID:
 `nightfall.json` is selected with `theme set nightfall`. Keep the filename stable when you update
 its colors. Do not use `system`, `light`, `dark`, or a built-in theme's ID.

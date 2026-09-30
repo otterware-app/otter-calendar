@@ -1,13 +1,13 @@
-# Install Otter Scaffold
+# Install Otter Calendar
 
-Otter Scaffold keeps your data and runs its assistant on one computer, the environment, and lets
+Otter Calendar keeps your data and runs its assistant on one computer, the environment, and lets
 you use it from the desktop app, a browser, or your phone. Set up the machine that should hold
 your data first; for most people that is the Mac running the desktop app.
 
 ## Desktop app (macOS)
 
 Download the latest DMG from the repository's
-[GitHub Releases](https://github.com/otterware-app/otter-scaffold/releases) (Apple silicon). The
+[GitHub Releases](https://github.com/otterware-app/otter-calendar/releases) (Apple silicon). The
 app bundles its own server and updates itself from the same page.
 
 ## Command line (server only)
@@ -15,21 +15,21 @@ app bundles its own server and updates itself from the same page.
 On a machine that should run without the desktop app, such as a home server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/otterware-app/otter-scaffold/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/otterware-app/otter-calendar/main/scripts/install.sh | sh
 ```
 
-This puts `otter-scaffold` in `~/.local/bin`. If your shell reports `command not found`, add that
+This puts `otter-calendar` in `~/.local/bin`. If your shell reports `command not found`, add that
 directory to your `PATH`; the installer prints the line. Set `T3CODE_CHANNEL=nightly` for the
 nightly train, or `T3CODE_VERSION` to pin a version. Release archives are built for Apple silicon
 Macs; on other machines, run from source (see the repository README).
 
 | Task                                             | Command                                                               |
 | ------------------------------------------------ | --------------------------------------------------------------------- |
-| Start the server and open the web app            | `otter-scaffold`                                                      |
-| Start the server without a browser               | `otter-scaffold serve`                                                |
-| Keep it running in the background (macOS, Linux) | `otter-scaffold service install` ([details](./background-service.md)) |
-| Move to the newest release                       | `otter-scaffold update`                                               |
-| Remove it again                                  | `otter-scaffold uninstall`                                            |
+| Start the server and open the web app            | `otter-calendar`                                                      |
+| Start the server without a browser               | `otter-calendar serve`                                                |
+| Keep it running in the background (macOS, Linux) | `otter-calendar service install` ([details](./background-service.md)) |
+| Move to the newest release                       | `otter-calendar update`                                               |
+| Remove it again                                  | `otter-calendar uninstall`                                            |
 
 ## Phone
 

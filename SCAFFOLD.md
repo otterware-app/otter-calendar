@@ -25,14 +25,14 @@ Everything that names the app comes from [`packages/shared/src/brand.ts`](packag
 
 | Field              | Scaffold value                   | Used for                                                     |
 | ------------------ | -------------------------------- | ------------------------------------------------------------ |
-| `displayName`      | Otter Scaffold                   | window titles, menus, web title, mobile app name             |
-| `slug`             | `otter-scaffold`                 | CLI/npm package, service unit, relay stack, MCP server key   |
-| `appId`            | `dev.otterware.scaffold`         | macOS bundle ID, Android package, launchd label (`.service`) |
-| `urlScheme`        | `otterscaffold`                  | desktop protocol and mobile links (`-dev` for development)   |
-| `homeDirName`      | `.otter-scaffold`                | data home (`~/.otter-scaffold`)                              |
+| `displayName`      | Otter Calendar                   | window titles, menus, web title, mobile app name             |
+| `slug`             | `otter-calendar`                 | CLI/npm package, service unit, relay stack, MCP server key   |
+| `appId`            | `dev.otterware.calendar`         | macOS bundle ID, Android package, launchd label (`.service`) |
+| `urlScheme`        | `ottercalendar`                  | desktop protocol and mobile links (`-dev` for development)   |
+| `homeDirName`      | `.otter-calendar`                | data home (`~/.otter-calendar`)                              |
 | `npmScope`         | `@otterware`                     | per-platform CLI packages                                    |
-| `githubRepository` | `otterware-app/otter-scaffold`   | GitHub Releases, desktop updates, `install.sh`               |
-| `hostedAppUrl`     | `https://scaffold.otterware.dev` | hosted web app, `/connect` sign-in page, pairing links       |
+| `githubRepository` | `otterware-app/otter-calendar`   | GitHub Releases, desktop updates, `install.sh`               |
+| `hostedAppUrl`     | `https://calendar.otterware.dev` | hosted web app, `/connect` sign-in page, pairing links       |
 | `connectName`      | Otter Connect                    | name of account-based remote access (T3 Connect) in the UI   |
 
 Internal names stay T3's on purpose: `@t3tools/*` packages, `T3CODE_*` variables, the `t3`
