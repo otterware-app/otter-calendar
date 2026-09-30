@@ -1,0 +1,22 @@
+{
+  "name": "@t3tools/scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@electron/osx-sign": "2.7.0",
+    "@t3tools/shared": "workspace:*",
+    "@t3tools/tailscale": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "typescript": "catalog:",
+    "typescript-legacy": "npm:typescript@~6.0.3",
+    "vite-plus": "catalog:"
+  }
+}

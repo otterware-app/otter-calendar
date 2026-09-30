@@ -1,0 +1,985 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "!v*-nightly.*"
+      - "!v*-preview.*"
+  schedule:
+    # Avoid minute zero, when GitHub scheduled jobs are busiest.
+    - cron: "8,38 * * * *"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel"
+        required: false
+        default: preview
+        type: choice
+        options:
+          - preview
+          - stable
+          - nightly
+      version:
+        description: "Stable version override (for example 1.2.3). Defaults to the version the latest nightly previewed."
+        required: false
+        type: string
+
+# Serialize nightlies (scheduled and manual) so overlapping runs cannot build
+# the same commit twice or publish out of order. Stable tag releases get their
+# own group so a nightly never blocks them. Running publishers are never
+# canceled, and queue: max keeps every pending run instead of the default
+# newest-wins single slot, so a queued stable tag can never be silently
+# dropped. Automatic nightlies recheck the release gap after leaving the queue.
+concurrency:
+  group: release-${{ (github.event_name == 'schedule' || inputs.channel == 'nightly' || inputs.channel == 'preview') && 'nightly' || 'stable' }}
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+  id-token: none
+
+jobs:
+  # Picks the commit every later job builds. Nightlies and tag pushes build the
+  # triggering commit. Manual stable releases build the commit of the latest
+  # published nightly, so stable only ever ships a build that nightly users
+  # have already run. Scheduled runs also decide here whether a nightly is due.
+  resolve_commit:
+    name: Resolve release commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      nightly_version: ${{ steps.resolve.outputs.nightly_version }}
+      has_changes: ${{ steps.resolve.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+
+      - id: resolve
+        name: Resolve release commit
+        uses: actions/github-script@v8
+        env:
+          DISPATCH_CHANNEL: ${{ inputs.channel }}
+        with:
+          script: |
+            const {
+              assertCommitOnDefaultBranch,
+              assertReleaseSource,
+              shouldReleaseNightly,
+              resolveLatestNightlyCommit,
+            } = require('./.github/scripts/check-nightly-release.cjs');
+
+            const dispatchChannel = process.env.DISPATCH_CHANNEL || 'preview';
+            const releaseChannel = context.eventName === 'schedule'
+              ? 'nightly'
+              : context.eventName === 'workflow_dispatch'
+                ? dispatchChannel
+                : 'stable';
+
+            await assertReleaseSource({ github, context, releaseChannel });
+
+            if (context.eventName === 'schedule') {
+              core.setOutput('has_changes', await shouldReleaseNightly({ github, context, core }));
+              core.setOutput('ref', context.sha);
+            } else if (context.eventName === 'workflow_dispatch' && dispatchChannel === 'stable') {
+              const { tag, sha, version } = await resolveLatestNightlyCommit({ github, context, core });
+              await assertCommitOnDefaultBranch({ github, context, sha });
+              core.notice(`Stable release builds ${sha}, the commit shipped by ${tag}.`);
+              core.setOutput('ref', sha);
+              core.setOutput('nightly_version', version);
+            } else {
+              core.setOutput('ref', context.sha);
+            }
+
+  preflight:
+    name: Preflight
+    needs: [resolve_commit]
+    if: |
+      needs.resolve_commit.result == 'success' &&
+      (github.event_name != 'schedule' || needs.resolve_commit.outputs.has_changes == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      release_channel: ${{ steps.release_meta.outputs.release_channel }}
+      version: ${{ steps.release_meta.outputs.version }}
+      tag: ${{ steps.release_meta.outputs.tag }}
+      release_name: ${{ steps.release_meta.outputs.name }}
+      short_sha: ${{ steps.release_meta.outputs.short_sha }}
+      previous_tag: ${{ steps.previous_tag.outputs.previous_tag }}
+      cli_dist_tag: ${{ steps.release_meta.outputs.cli_dist_tag }}
+      is_prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
+      make_latest: ${{ steps.release_meta.outputs.make_latest }}
+      ref: ${{ needs.resolve_commit.outputs.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve_commit.outputs.ref }}
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+        env:
+          pnpm_config_cache_dir: ${{ runner.temp }}/pnpm-metadata
+
+      - id: release_meta
+        name: Resolve release version
+        shell: bash
+        env:
+          DISPATCH_CHANNEL: ${{ github.event.inputs.channel }}
+          DISPATCH_VERSION: ${{ github.event.inputs.version }}
+          NIGHTLY_VERSION: ${{ needs.resolve_commit.outputs.nightly_version }}
+          NIGHTLY_DATE: ${{ github.run_started_at }}
+          NIGHTLY_SHA: ${{ needs.resolve_commit.outputs.ref }}
+          NIGHTLY_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" || ( "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_CHANNEL:-preview}" == "nightly" ) ]]; then
+            nightly_date="$(date -u -d "$NIGHTLY_DATE" +%Y%m%d)"
+
+            node scripts/resolve-nightly-release.ts \
+              --date "$nightly_date" \
+              --run-number "$NIGHTLY_RUN_NUMBER" \
+              --sha "$NIGHTLY_SHA" \
+              --github-output
+
+            echo "release_channel=nightly" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=nightly" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_CHANNEL:-preview}" == "preview" ]]; then
+            # Manual-only test train: exercises the whole release flow for a
+            # commit end users must never receive. Never scheduled.
+            # Same versioning as nightly under its own prerelease identifier.
+            # A preview release is reachable only by asking for it: npm gets it
+            # under the `preview` dist-tag, which nothing resolves by default,
+            # its desktop builds carry no update feed, and no updater manifest
+            # is attached to the release, so neither stable nor nightly
+            # installs can ever be offered one.
+            nightly_date="$(date -u -d "$NIGHTLY_DATE" +%Y%m%d)"
+
+            node scripts/resolve-nightly-release.ts \
+              --channel preview \
+              --date "$nightly_date" \
+              --run-number "$NIGHTLY_RUN_NUMBER" \
+              --sha "$NIGHTLY_SHA" \
+              --github-output
+
+            echo "release_channel=preview" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=preview" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+              raw="${DISPATCH_VERSION:-$NIGHTLY_VERSION}"
+              if [[ -z "$raw" ]]; then
+                echo "workflow_dispatch stable releases need a version input or a published nightly." >&2
+                exit 1
+              fi
+            else
+              raw="${GITHUB_REF_NAME}"
+            fi
+
+            version="${raw#v}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "Invalid release version: $raw" >&2
+              exit 1
+            fi
+
+            echo "release_channel=stable" >> "$GITHUB_OUTPUT"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "tag=v$version" >> "$GITHUB_OUTPUT"
+            echo "name=Otter Scaffold v$version" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=latest" >> "$GITHUB_OUTPUT"
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "make_latest=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+              echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - id: previous_tag
+        name: Resolve previous release tag
+        run: |
+          node scripts/resolve-previous-release-tag.ts \
+            --channel "${{ steps.release_meta.outputs.release_channel }}" \
+            --current-tag "${{ steps.release_meta.outputs.tag }}" \
+            --github-output
+
+      # Share only the verification results, not the large registry metadata cache.
+      - name: Upload dependency verification
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-dependency-verification
+          path: ${{ runner.temp }}/pnpm-metadata/lockfile-verified.jsonl
+
+  quality:
+    name: Release quality checks
+    needs: [preflight]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Ensure Electron runtime is installed
+        run: vp run --filter @t3tools/desktop ensure:electron
+
+      - name: Check
+        run: vp check
+
+      - name: Typecheck
+        run: vp run typecheck
+
+  # Keep tests on their own runners, using the same package split and server
+  # shards as CI, so the release check job does not spend its budget on tests.
+  test:
+    name: Release tests
+    needs: [preflight]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Ensure Electron runtime is installed
+        run: vp run --filter @t3tools/desktop ensure:electron
+
+      - name: Test
+        run: vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' test
+
+  test_server:
+    name: Release server tests ${{ matrix.shard }}
+    needs: [preflight]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      # No Electron setup here: `t3` (apps/server) has no Electron dependency
+      # and none of its tests touch the runtime. Only the non-server `test`
+      # job, which covers @t3tools/desktop, needs the download.
+      - name: Test
+        run: vp run --filter t3 test --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+
+  relay_public_config:
+    name: Resolve T3 Connect public config
+    # Consumes only the release commit, not preflight's resolved version, so it
+    # runs alongside preflight instead of after it. The condition mirrors preflight's.
+    needs: [resolve_commit]
+    if: |
+      needs.resolve_commit.result == 'success' &&
+      (github.event_name != 'schedule' || needs.resolve_commit.outputs.has_changes == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: production
+    outputs:
+      clerk_publishable_key: ${{ steps.public_config.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ steps.public_config.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ steps.public_config.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ steps.public_config.outputs.relay_url }}
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      RELAY_DOMAIN: ${{ vars.RELAY_DOMAIN }}
+      RELAY_API_ZONE_NAME: ${{ vars.RELAY_API_ZONE_NAME }}
+      CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY }}
+      CLERK_JWT_TEMPLATE: ${{ vars.CLERK_JWT_TEMPLATE }}
+      CLERK_CLI_OAUTH_CLIENT_ID: ${{ vars.CLERK_CLI_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve_commit.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=t3code-relay...
+
+      # The deployed stack's outputs, read from Alchemy's state store without
+      # planning or applying. Select the backend explicitly to avoid loading
+      # the stack's unrelated provider credentials; suppress informational logs
+      # and strip the credential-refresh progress prefix before parsing JSON.
+      # Redacted values are persisted as
+      # {"__redacted__": "<value>"}; the token is masked before it is written.
+      # Without a deployed relay (no CLOUDFLARE_ACCOUNT_ID) or without Axiom on
+      # it, the file stays empty and clients ship without relay tracing.
+      - name: Read production relay tracing config
+        shell: bash
+        working-directory: infra/relay
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/relay-client-tracing.env"
+          if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            echo "::notice::No relay deployment configured (CLOUDFLARE_ACCOUNT_ID is not set); building without relay tracing."
+            exit 0
+          fi
+          output="$(npx alchemy state read OtterScaffoldRelay/prod/output --backend cloudflare --log-level error --no-input | sed -n '/^{/,$p')"
+          field() {
+            jq -r --arg key "$1" '.[$key] | if type == "object" then .__redacted__ else . end | select(. != null) // ""' <<<"$output"
+          }
+          url="$(field clientTracingUrl)"
+          dataset="$(field clientTracingDataset)"
+          token="$(field clientTracingToken)"
+          if [[ -z "$url" || -z "$dataset" || -z "$token" ]]; then
+            echo "::notice::The relay stack has no client tracing outputs; building without relay tracing."
+            exit 0
+          fi
+          echo "::add-mask::$token"
+          {
+            echo "T3CODE_RELAY_CLIENT_OTLP_TRACES_URL=$url"
+            echo "T3CODE_RELAY_CLIENT_OTLP_TRACES_DATASET=$dataset"
+            echo "T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN=$token"
+          } > "$RUNNER_TEMP/relay-client-tracing.env"
+
+      - name: Upload relay client tracing config
+        uses: actions/upload-artifact@v7
+        with:
+          name: relay-client-tracing-config
+          path: ${{ runner.temp }}/relay-client-tracing.env
+          if-no-files-found: error
+          retention-days: 1
+
+      - id: public_config
+        name: Resolve production relay public config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          relay_domain="${RELAY_DOMAIN:-}"
+          if [[ -z "$relay_domain" && -n "${RELAY_API_ZONE_NAME:-}" ]]; then
+            relay_domain="relay.$RELAY_API_ZONE_NAME"
+          fi
+          # T3 Connect is optional: with none of its values set, clients are
+          # built with cloud features disabled. A partial setup is an error.
+          if [[ -z "$relay_domain" && -z "${CLERK_PUBLISHABLE_KEY:-}" && -z "${CLERK_JWT_TEMPLATE:-}" && -z "${CLERK_CLI_OAUTH_CLIENT_ID:-}" ]]; then
+            echo "::notice::T3 Connect is not configured; building without cloud features."
+            {
+              echo "clerk_publishable_key="
+              echo "clerk_jwt_template="
+              echo "clerk_cli_oauth_client_id="
+              echo "relay_url="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          required=(
+            relay_domain
+            CLERK_PUBLISHABLE_KEY
+            CLERK_JWT_TEMPLATE
+            CLERK_CLI_OAUTH_CLIENT_ID
+          )
+          missing=()
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required relay deployment configuration: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          echo "clerk_publishable_key=$CLERK_PUBLISHABLE_KEY" >> "$GITHUB_OUTPUT"
+          echo "clerk_jwt_template=$CLERK_JWT_TEMPLATE" >> "$GITHUB_OUTPUT"
+          echo "clerk_cli_oauth_client_id=$CLERK_CLI_OAUTH_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "relay_url=https://$relay_domain" >> "$GITHUB_OUTPUT"
+
+  # The platform-independent JS (server bundle, web client, Electron main) is
+  # built once here and handed to the desktop packaging job as `js-bundle`.
+  # The relay/Clerk values are baked into the bundle, so they belong to this
+  # job rather than to the packaging job.
+  build_bundle:
+    name: Build JS bundle
+    # Same gating as relay_public_config: only the release commit is needed, so
+    # this runs alongside preflight. See the condition comment there.
+    needs: [preflight, relay_public_config]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.relay_public_config.outputs.clerk_publishable_key }}
+      T3CODE_CLERK_JWT_TEMPLATE: ${{ needs.relay_public_config.outputs.clerk_jwt_template }}
+      T3CODE_CLERK_CLI_OAUTH_CLIENT_ID: ${{ needs.relay_public_config.outputs.clerk_cli_oauth_client_id }}
+      T3CODE_RELAY_URL: ${{ needs.relay_public_config.outputs.relay_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: false
+
+      # pnpm checks the lockfile and policy before reusing this result. A missing
+      # artifact leaves the cache empty, so installation runs the checks again.
+      - name: Download dependency verification
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: release-dependency-verification
+          path: ${{ runner.temp }}/pnpm-metadata
+
+      - name: Install bundle dependencies
+        env:
+          pnpm_config_cache_dir: ${{ runner.temp }}/pnpm-metadata
+        run: vp install --filter=t3... --filter=@t3tools/web... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+
+      - name: Download relay client tracing config
+        uses: actions/download-artifact@v8
+        with:
+          name: relay-client-tracing-config
+          path: ${{ runner.temp }}/relay-client-tracing
+
+      - name: Load relay client tracing config
+        shell: bash
+        run: |
+          config_path="$RUNNER_TEMP/relay-client-tracing/relay-client-tracing.env"
+          tracing_token="$(sed -n 's/^T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN=//p' "$config_path")"
+          if [[ -n "$tracing_token" ]]; then echo "::add-mask::$tracing_token"; fi
+          cat "$config_path" >> "$GITHUB_ENV"
+
+      - name: Align package versions to release version
+        run: node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
+
+      # Runs t3#build (which depends on @t3tools/web#build) and
+      # @t3tools/desktop#build, so apps/server/dist holds the server bundle
+      # plus the web client and apps/desktop/dist-electron the Electron main.
+      - name: Build JS bundle
+        run: vp run build:desktop
+
+      # Two paths under apps/ so the artifact root is apps/; consumers download
+      # into `apps` to restore both at their original locations.
+      - name: Upload JS bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: js-bundle
+          path: |
+            apps/server/dist
+            apps/desktop/dist-electron
+          if-no-files-found: error
+          retention-days: 1
+
+  # Packages the JS bundle into the macOS arm64 desktop app and builds the CLI
+  # archive on the same Apple Silicon runner (see release-desktop.yml).
+  desktop_mac_arm64:
+    name: Desktop macOS arm64
+    needs: [preflight, relay_public_config, build_bundle]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.build_bundle.result == 'success' }}
+    uses: ./.github/workflows/release-desktop.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      ref: ${{ needs.preflight.outputs.ref }}
+      release_channel: ${{ needs.preflight.outputs.release_channel }}
+      clerk_publishable_key: ${{ needs.relay_public_config.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.relay_public_config.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.relay_public_config.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.relay_public_config.outputs.relay_url }}
+
+  # npm gets the same bytes as the GitHub Release: the launcher plus the
+  # darwin-arm64 package built from the CLI archive. Publishing is opt-in: it
+  # runs only when the NPM_PUBLISH repository variable is `true`. Preview
+  # publishes too, under the `preview` dist-tag, which nothing resolves unless
+  # asked for by name.
+  publish_cli:
+    name: Publish CLI to npm
+    needs: [preflight, relay_public_config, quality, test, test_server, desktop_mac_arm64]
+    if: ${{ vars.NPM_PUBLISH == 'true' && !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.quality.result == 'success' && needs.test.result == 'success' && needs.test_server.result == 'success' && needs.desktop_mac_arm64.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=t3...
+              - --filter=@t3tools/scripts...
+
+      - name: Download all CLI archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: release-cli
+
+      # Optional: without NPM_TOKEN, publishing relies on npm trusted
+      # publishing through this workflow's OIDC token.
+      - name: Configure npm token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            printf "//registry.npmjs.org/:_authToken=%s\n" "$NPM_TOKEN" >> ~/.npmrc
+          fi
+
+      # Only darwin-arm64 is built, so the other platform packages are skipped.
+      - name: Build npm packages from CLI archives
+        run: node scripts/build-npm-platform-packages.ts --archives-dir release-cli --version "${{ needs.preflight.outputs.version }}" --output-dir npm-packages --allow-missing
+
+      # A dry run of every package first: an auth or scope error here (the
+      # @otterware scope missing, a package without a trusted publisher) fails
+      # before anything is live, instead of after some packages already are.
+      - name: Check npm publish access (dry run)
+        run: |
+          if ! node apps/server/scripts/cli.ts publish --packages-dir npm-packages --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --provenance --dry-run --verbose; then
+            echo "::error::npm publish --dry-run failed. Make sure the @otterware npm scope exists and that otter-scaffold and every @otterware/otter-scaffold-<platform> package has a trusted publisher registered for .github/workflows/release.yml, or that NPM_TOKEN can publish them (see docs/operations/release.md)." >&2
+            exit 1
+          fi
+
+      - name: Publish CLI packages
+        run: node apps/server/scripts/cli.ts publish --packages-dir npm-packages --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --provenance --verbose
+
+      - name: Tag nightly as latest
+        if: needs.preflight.outputs.release_channel == 'nightly'
+        run: npm dist-tag add "otter-scaffold@${{ needs.preflight.outputs.version }}" latest
+
+  release:
+    name: Publish GitHub Release
+    # Gated on the checks directly, since publish_cli (which also needs them)
+    # is skipped unless npm publishing is enabled.
+    needs: [preflight, quality, test, test_server, desktop_mac_arm64, publish_cli]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.quality.result == 'success' && needs.test.result == 'success' && needs.test_server.result == 'success' && needs.desktop_mac_arm64.result == 'success' && (needs.publish_cli.result == 'success' || needs.publish_cli.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Download all desktop artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download all CLI archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: release-assets
+
+      # Installers verify archives against this file, so it is written from the
+      # signed bytes that get uploaded, never from an earlier stage.
+      - name: Write CLI archive checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          shopt -s nullglob
+          archives=(t3-*.tar.gz)
+          if [[ ${#archives[@]} -eq 0 ]]; then
+            echo "No CLI archives were produced." >&2
+            exit 1
+          fi
+          sha256sum "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
+
+      # The desktop build omits the publish config for preview versions, so
+      # electron-builder emits no updater manifests for them. Refuse to publish
+      # if one shows up anyway: a `latest*.yml` or `nightly*.yml` on a preview
+      # release is what would let a stable or nightly install update onto it.
+      - name: Refuse updater metadata on preview releases
+        if: needs.preflight.outputs.release_channel == 'preview'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob extglob
+          # builder-debug.yml is electron-builder's config dump, not a feed.
+          updater_files=(release-assets/!(builder-debug).yml release-assets/*.blockmap)
+          if [[ ${#updater_files[@]} -ne 0 ]]; then
+            printf 'Preview releases must not carry updater metadata, found: %s\n' "${updater_files[*]}" >&2
+            exit 1
+          fi
+
+      # Updater manifests and blockmaps are what electron-updater consumes.
+      # They are only listed for channels an updater is meant to follow.
+      - id: release_files
+        name: Resolve release asset list
+        shell: bash
+        run: |
+          {
+            echo 'files<<EOF'
+            echo 'release-assets/*.dmg'
+            echo 'release-assets/*.zip'
+            if [[ "${{ needs.preflight.outputs.release_channel }}" != "preview" ]]; then
+              echo 'release-assets/*.blockmap'
+              echo 'release-assets/*.yml'
+            fi
+            echo 'release-assets/*.tar.gz'
+            echo 'release-assets/SHA256SUMS'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      # A preview release gets a warning instead of generated notes. Generated
+      # notes would list every commit since the previous preview, which is
+      # unmerged branch history no one should read as a changelog, and would
+      # make the release look like any other build to someone browsing the
+      # releases page.
+      - name: Write preview release notes
+        if: needs.preflight.outputs.release_channel == 'preview'
+        shell: bash
+        run: |
+          cat > release-notes.md <<'EOF'
+          > [!WARNING]
+          > **This is a preview build. Do not install it unless you know exactly why you are here.**
+          >
+          > Preview builds are cut by maintainers from unreleased branches to exercise the release pipeline. They can be broken, receive no fixes, are never offered as updates, and are not supported. If you want Otter Scaffold, install the [latest release](https://github.com/otterware-app/otter-scaffold/releases/latest) or a nightly instead.
+
+          Built from `${{ needs.preflight.outputs.ref }}`.
+          EOF
+
+      - name: Publish release
+        if: needs.preflight.outputs.previous_tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          target_commitish: ${{ needs.preflight.outputs.ref }}
+          name: ${{ needs.preflight.outputs.release_name }}
+          generate_release_notes: ${{ needs.preflight.outputs.release_channel != 'preview' }}
+          body_path: ${{ needs.preflight.outputs.release_channel == 'preview' && 'release-notes.md' || '' }}
+          previous_tag: ${{ needs.preflight.outputs.previous_tag }}
+          prerelease: ${{ needs.preflight.outputs.is_prerelease }}
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
+          files: ${{ steps.release_files.outputs.files }}
+          fail_on_unmatched_files: true
+          token: ${{ github.token }}
+
+      - name: Publish first release
+        if: needs.preflight.outputs.previous_tag == ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          target_commitish: ${{ needs.preflight.outputs.ref }}
+          name: ${{ needs.preflight.outputs.release_name }}
+          generate_release_notes: ${{ needs.preflight.outputs.release_channel != 'preview' }}
+          body_path: ${{ needs.preflight.outputs.release_channel == 'preview' && 'release-notes.md' || '' }}
+          prerelease: ${{ needs.preflight.outputs.is_prerelease }}
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
+          files: ${{ steps.release_files.outputs.files }}
+          fail_on_unmatched_files: true
+          token: ${{ github.token }}
+
+  # Deploys the hosted web app to Vercel. Opt-in: the job skips every step when
+  # the VERCEL_PROJECT_ID secret is not set. Secrets cannot gate a job-level
+  # `if`, so the first step decides and the rest follow its output.
+  deploy_web:
+    name: Deploy hosted web app
+    needs: [preflight, relay_public_config, release]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.relay_public_config.result == 'success' && needs.release.result == 'success' && needs.preflight.outputs.release_channel != 'preview' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.relay_public_config.outputs.clerk_publishable_key }}
+      T3CODE_CLERK_JWT_TEMPLATE: ${{ needs.relay_public_config.outputs.clerk_jwt_template }}
+      T3CODE_CLERK_CLI_OAUTH_CLIENT_ID: ${{ needs.relay_public_config.outputs.clerk_cli_oauth_client_id }}
+      T3CODE_RELAY_URL: ${{ needs.relay_public_config.outputs.relay_url }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      T3CODE_WEB_ROUTER_URL: ${{ vars.T3CODE_WEB_ROUTER_URL }}
+      T3CODE_WEB_LATEST_DOMAIN: ${{ vars.T3CODE_WEB_LATEST_DOMAIN }}
+      T3CODE_WEB_NIGHTLY_DOMAIN: ${{ vars.T3CODE_WEB_NIGHTLY_DOMAIN }}
+      VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+    steps:
+      - id: vercel
+        name: Check for Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${VERCEL_PROJECT_ID:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Hosted web deploy skipped: VERCEL_PROJECT_ID is not set."
+            exit 0
+          fi
+
+          if [[ -z "${VERCEL_TOKEN:-}" || -z "${VERCEL_ORG_ID:-}" ]]; then
+            echo "Missing one or more required Vercel secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID." >&2
+            exit 1
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.vercel.outputs.enabled == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        if: steps.vercel.outputs.enabled == 'true'
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=@t3tools/scripts...
+              - --filter=@t3tools/web...
+
+      - name: Download relay client tracing config
+        if: steps.vercel.outputs.enabled == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: relay-client-tracing-config
+          path: ${{ runner.temp }}/relay-client-tracing
+
+      - name: Load relay client tracing config
+        if: steps.vercel.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          config_path="$RUNNER_TEMP/relay-client-tracing/relay-client-tracing.env"
+          tracing_token="$(sed -n 's/^T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN=//p' "$config_path")"
+          if [[ -n "$tracing_token" ]]; then echo "::add-mask::$tracing_token"; fi
+          cat "$config_path" >> "$GITHUB_ENV"
+
+      - name: Align package versions to release version
+        if: steps.vercel.outputs.enabled == 'true'
+        run: node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
+
+      - name: Refresh release lockfile
+        if: steps.vercel.outputs.enabled == 'true'
+        run: vp install --lockfile-only --ignore-scripts
+
+      - name: Deploy and alias channel
+        if: steps.vercel.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          router_url="${T3CODE_WEB_ROUTER_URL:-https://scaffold.otterware.dev}"
+          latest_domain="${T3CODE_WEB_LATEST_DOMAIN:-latest.scaffold.otterware.dev}"
+          nightly_domain="${T3CODE_WEB_NIGHTLY_DOMAIN:-nightly.scaffold.otterware.dev}"
+          router_domain="${router_url#http://}"
+          router_domain="${router_domain#https://}"
+          router_domain="${router_domain%%/*}"
+
+          if [[ "${{ needs.preflight.outputs.release_channel }}" == "stable" ]]; then
+            channel_domain="$latest_domain"
+            channel_name="latest"
+          else
+            channel_domain="$nightly_domain"
+            channel_name="nightly"
+          fi
+
+          vercel_scope="${VERCEL_TEAM_SLUG:-$VERCEL_ORG_ID}"
+          vercel_scope_args=(--scope "$vercel_scope")
+
+          echo "Deploying hosted web app for $channel_name channel."
+          deployment_url="$(
+            vp dlx vercel@53.1.1 deploy \
+              --archive=tgz \
+              --prod \
+              --skip-domain \
+              --yes \
+              --token "$VERCEL_TOKEN" \
+              "${vercel_scope_args[@]}" \
+              --build-env "APP_VERSION=${{ needs.preflight.outputs.version }}" \
+              --build-env "T3CODE_CLERK_PUBLISHABLE_KEY=${T3CODE_CLERK_PUBLISHABLE_KEY:-}" \
+              --build-env "T3CODE_CLERK_JWT_TEMPLATE=${T3CODE_CLERK_JWT_TEMPLATE:-}" \
+              --build-env "T3CODE_CLERK_CLI_OAUTH_CLIENT_ID=${T3CODE_CLERK_CLI_OAUTH_CLIENT_ID:-}" \
+              --build-env "T3CODE_RELAY_URL=${T3CODE_RELAY_URL:-}" \
+              --build-env "T3CODE_RELAY_CLIENT_OTLP_TRACES_URL=${T3CODE_RELAY_CLIENT_OTLP_TRACES_URL:-}" \
+              --build-env "T3CODE_RELAY_CLIENT_OTLP_TRACES_DATASET=${T3CODE_RELAY_CLIENT_OTLP_TRACES_DATASET:-}" \
+              --build-env "T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN=${T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN:-}" \
+              --build-env "VITE_HOSTED_APP_URL=$router_url" \
+              --build-env "VITE_HOSTED_APP_CHANNEL=$channel_name"
+          )"
+
+          echo "Aliasing $deployment_url to $channel_domain."
+          vp dlx vercel@53.1.1 alias set "$deployment_url" "$channel_domain" \
+            --token "$VERCEL_TOKEN" \
+            "${vercel_scope_args[@]}"
+
+          if [[ "$channel_name" == "latest" && -n "$router_domain" && "$router_domain" != "$channel_domain" ]]; then
+            echo "Aliasing $deployment_url to router domain $router_domain."
+            vp dlx vercel@53.1.1 alias set "$deployment_url" "$router_domain" \
+              --token "$VERCEL_TOKEN" \
+              "${vercel_scope_args[@]}"
+          fi
+
+  finalize:
+    name: Finalize release
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' && needs.preflight.outputs.release_channel == 'stable' }}
+    needs: [preflight, release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - id: app_token
+        name: Mint release app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app_token.outputs.token }}
+          persist-credentials: true
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - id: app_bot
+        name: Resolve GitHub App bot identity
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          APP_SLUG: ${{ steps.app_token.outputs.app-slug }}
+        run: |
+          user_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          echo "name=${APP_SLUG}[bot]" >> "$GITHUB_OUTPUT"
+          echo "email=${user_id}+${APP_SLUG}[bot]@users.noreply.github.com" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=@t3tools/scripts...
+              - --filter=@t3tools/oxlint-plugin-t3code...
+
+      - id: update_versions
+        name: Update version strings
+        env:
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+        run: node scripts/update-release-package-versions.ts "$RELEASE_VERSION" --github-output
+
+      - name: Format package.json files
+        if: steps.update_versions.outputs.changed == 'true'
+        run: vp fmt apps/server/package.json apps/desktop/package.json apps/web/package.json packages/contracts/package.json
+
+      - name: Refresh lockfile
+        if: steps.update_versions.outputs.changed == 'true'
+        run: vp install --lockfile-only --ignore-scripts
+
+      - name: Commit and push version bump
+        if: steps.update_versions.outputs.changed == 'true'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+        run: |
+          if git diff --quiet -- apps/server/package.json apps/desktop/package.json apps/web/package.json packages/contracts/package.json pnpm-lock.yaml; then
+            echo "No version changes to commit."
+            exit 0
+          fi
+
+          git config user.name "${{ steps.app_bot.outputs.name }}"
+          git config user.email "${{ steps.app_bot.outputs.email }}"
+
+          git add apps/server/package.json apps/desktop/package.json apps/web/package.json packages/contracts/package.json pnpm-lock.yaml
+          git commit -m "chore(release): prepare $RELEASE_TAG"
+          git push origin HEAD:main

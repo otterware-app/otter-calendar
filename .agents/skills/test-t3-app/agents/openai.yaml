@@ -1,0 +1,4 @@
+interface:
+  display_name: "App Testing"
+  short_description: "Test web and desktop in Otter Code's Browser panel"
+  default_prompt: "Use $test-t3-app to verify the affected web or desktop flow through Otter Code's Browser panel."

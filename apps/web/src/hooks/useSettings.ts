@@ -1,0 +1,378 @@
+/**
+ * Environment-scoped settings hooks.
+ *
+ * Abstracts the split between server-authoritative settings (persisted in
+ * `settings.json` on the server, fetched via `server.getConfig`) and
+ * client-only settings (persisted in localStorage).
+ *
+ * Live server settings always require an environment id. Primary-environment
+ * access is intentionally named as such so environment-sensitive consumers
+ * cannot silently read the wrong server's settings.
+ */
+import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useAtomValue } from "@effect/atom-react";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  type EnvironmentId,
+  type ProviderInstanceMutation,
+  ServerSettings,
+  type ServerSettingsPatch,
+} from "@t3tools/contracts";
+import {
+  type ClientSettingsPatch,
+  type ClientSettings,
+  DEFAULT_CLIENT_SETTINGS,
+  type EnvironmentIdentificationMode,
+  type UnifiedSettings,
+} from "@t3tools/contracts/settings";
+import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
+import { ensureLocalApi } from "~/localApi";
+import {
+  getThemeDefinition,
+  getThemePreviewSidebarArtwork,
+  resolveThemeHalf,
+  subscribeToThemePreview,
+  themeAllowsSidebarArtwork,
+} from "~/themePalette";
+import * as Struct from "effect/Struct";
+import { serverEnvironment } from "~/state/server";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { useTheme } from "./useTheme";
+
+const CLIENT_SETTINGS_PERSISTENCE_ERROR_SCOPE = "[CLIENT_SETTINGS]";
+
+type UnifiedSettingsPatch = ServerSettingsPatch & ClientSettingsPatch;
+
+const clientSettingsListeners = new Set<() => void>();
+const clientSettingsHydrationListeners = new Set<() => void>();
+type ClientSettingsHydrationStatus = "pending" | "ready" | "failed" | "retrying";
+let clientSettingsSnapshot = DEFAULT_CLIENT_SETTINGS;
+let clientSettingsHydrationStatus: ClientSettingsHydrationStatus = "pending";
+let clientSettingsHydrationPromise: Promise<void> | null = null;
+let clientSettingsHydrationGeneration = 0;
+let clientSettingsPersistenceQueue: Promise<void> = Promise.resolve();
+let deferredClientSettingsPatchCount = 0;
+
+function emitClientSettingsChange() {
+  for (const listener of clientSettingsListeners) {
+    listener();
+  }
+}
+
+function emitClientSettingsHydrationChange() {
+  for (const listener of clientSettingsHydrationListeners) {
+    listener();
+  }
+}
+
+function getClientSettingsSnapshot(): ClientSettings {
+  return clientSettingsSnapshot;
+}
+
+function replaceClientSettingsSnapshot(settings: ClientSettings): void {
+  clientSettingsSnapshot = settings;
+  emitClientSettingsChange();
+}
+
+function setClientSettingsHydrationStatus(nextStatus: ClientSettingsHydrationStatus): void {
+  if (clientSettingsHydrationStatus === nextStatus) {
+    return;
+  }
+  clientSettingsHydrationStatus = nextStatus;
+  emitClientSettingsHydrationChange();
+}
+
+function subscribeClientSettings(listener: () => void): () => void {
+  clientSettingsListeners.add(listener);
+  void hydrateClientSettings().catch(() => undefined);
+  return () => {
+    clientSettingsListeners.delete(listener);
+  };
+}
+
+function getClientSettingsHydratedSnapshot(): boolean {
+  return clientSettingsHydrationStatus === "ready";
+}
+
+function subscribeClientSettingsHydration(listener: () => void): () => void {
+  clientSettingsHydrationListeners.add(listener);
+  void hydrateClientSettings().catch(() => undefined);
+  return () => {
+    clientSettingsHydrationListeners.delete(listener);
+  };
+}
+
+async function hydrateClientSettings(): Promise<void> {
+  if (clientSettingsHydrationStatus === "ready") {
+    return;
+  }
+  if (clientSettingsHydrationPromise) {
+    return clientSettingsHydrationPromise;
+  }
+
+  const hydrationGeneration = clientSettingsHydrationGeneration;
+  setClientSettingsHydrationStatus(
+    clientSettingsHydrationStatus === "failed" || clientSettingsHydrationStatus === "retrying"
+      ? "retrying"
+      : "pending",
+  );
+  const nextHydration = (async () => {
+    try {
+      const persistedSettings = await ensureLocalApi().persistence.getClientSettings();
+      if (hydrationGeneration !== clientSettingsHydrationGeneration) {
+        return;
+      }
+      if (persistedSettings) {
+        replaceClientSettingsSnapshot({ ...DEFAULT_CLIENT_SETTINGS, ...persistedSettings });
+      }
+      setClientSettingsHydrationStatus("ready");
+    } catch (error) {
+      if (hydrationGeneration === clientSettingsHydrationGeneration) {
+        setClientSettingsHydrationStatus("failed");
+      }
+      console.error(`${CLIENT_SETTINGS_PERSISTENCE_ERROR_SCOPE} hydrate failed`, {
+        operation: "hydrate",
+        ...safeErrorLogAttributes(error),
+      });
+      throw error;
+    }
+  })();
+
+  const hydrationPromise = nextHydration.finally(() => {
+    if (clientSettingsHydrationPromise === hydrationPromise) {
+      clientSettingsHydrationPromise = null;
+    }
+  });
+  clientSettingsHydrationPromise = hydrationPromise;
+
+  return clientSettingsHydrationPromise;
+}
+
+const defaultClientSettingsPersistence = (settings: ClientSettings): Promise<void> =>
+  ensureLocalApi().persistence.setClientSettings(settings);
+
+function enqueueClientSettingsPersistence<A>(work: () => Promise<A>): Promise<A> {
+  const result = clientSettingsPersistenceQueue.then(work);
+  clientSettingsPersistenceQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+export function persistClientSettingsPatch(
+  patch: ClientSettingsPatch,
+  persist: (settings: ClientSettings) => Promise<void> = defaultClientSettingsPersistence,
+): Promise<void> {
+  // Patches queued before hydration must publish before newer optimistic patches.
+  const deferPatch =
+    clientSettingsHydrationStatus !== "ready" || deferredClientSettingsPatchCount > 0;
+  if (deferPatch) {
+    deferredClientSettingsPatchCount += 1;
+  } else {
+    replaceClientSettingsSnapshot({ ...getClientSettingsSnapshot(), ...patch });
+  }
+  return enqueueClientSettingsPersistence(async () => {
+    if (deferPatch) {
+      try {
+        if (clientSettingsHydrationStatus !== "ready") {
+          await hydrateClientSettings();
+        }
+        replaceClientSettingsSnapshot({ ...getClientSettingsSnapshot(), ...patch });
+      } finally {
+        deferredClientSettingsPatchCount -= 1;
+      }
+    }
+    await persist(getClientSettingsSnapshot());
+  }).catch((error) => {
+    console.error(`${CLIENT_SETTINGS_PERSISTENCE_ERROR_SCOPE} persist failed`, {
+      operation: "persist",
+      ...safeErrorLogAttributes(error),
+    });
+  });
+}
+
+// ── Key sets for routing patches ─────────────────────────────────────
+
+const SERVER_SETTINGS_KEYS = new Set<string>(Struct.keys(ServerSettings.fields));
+
+function splitPatch(patch: UnifiedSettingsPatch): {
+  serverPatch: ServerSettingsPatch;
+  clientPatch: ClientSettingsPatch;
+} {
+  const serverPatch: Record<string, unknown> = {};
+  const clientPatch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (SERVER_SETTINGS_KEYS.has(key)) {
+      serverPatch[key] = value;
+    } else {
+      clientPatch[key] = value;
+    }
+  }
+  return {
+    serverPatch: serverPatch as ServerSettingsPatch,
+    clientPatch: clientPatch as ClientSettingsPatch,
+  };
+}
+
+// ── Hooks ────────────────────────────────────────────────────────────
+
+/**
+ * Non-hook accessor for the current merged client settings snapshot.
+ * Used by non-React code paths (e.g. runtime services) that need the latest
+ * settings without subscribing.
+ */
+export function getClientSettings(): ClientSettings {
+  return getClientSettingsSnapshot();
+}
+
+function useClientSettingsHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeClientSettingsHydration,
+    getClientSettingsHydratedSnapshot,
+    () => false,
+  );
+}
+
+function useClientSettingsValue(): ClientSettings {
+  return useSyncExternalStore(
+    subscribeClientSettings,
+    getClientSettingsSnapshot,
+    () => DEFAULT_CLIENT_SETTINGS,
+  );
+}
+
+export function mergeEnvironmentSettings(
+  serverSettings: ServerSettings,
+  clientSettings: ClientSettings,
+): UnifiedSettings {
+  // Decode drops retired client keys, but older untyped persistence adapters
+  // can still return them. Server-owned values must always win.
+  return { ...clientSettings, ...serverSettings };
+}
+
+function useMergedSettings<T>(
+  serverSettings: ServerSettings,
+  selector: ((settings: UnifiedSettings) => T) | undefined,
+): T {
+  const clientSettings = useClientSettingsValue();
+
+  const merged = useMemo<UnifiedSettings>(
+    () => mergeEnvironmentSettings(serverSettings, clientSettings),
+    [clientSettings, serverSettings],
+  );
+
+  return useMemo(() => (selector ? selector(merged) : (merged as T)), [merged, selector]);
+}
+
+export function useClientSettings<T = ClientSettings>(
+  selector?: (settings: ClientSettings) => T,
+): T {
+  const settings = useClientSettingsValue();
+  return useMemo(() => (selector ? selector(settings) : (settings as T)), [selector, settings]);
+}
+
+export function resolveEnvironmentIdentificationMode(input: {
+  mode: EnvironmentIdentificationMode;
+  settingsHydrated: boolean;
+  paletteThemeActive?: boolean;
+  paletteThemeAllowsArtwork?: boolean;
+}): EnvironmentIdentificationMode {
+  // Avoid briefly rendering the default artwork before a persisted pill/none choice loads.
+  if (!input.settingsHydrated) return "none";
+  // Artwork palettes are maintained for built-ins only. Keep an explicit
+  // "none", but use the theme-aware pill for user-controlled palettes.
+  return input.paletteThemeActive && !input.paletteThemeAllowsArtwork && input.mode === "artwork"
+    ? "pill"
+    : input.mode;
+}
+
+export function useEnvironmentIdentificationMode(): EnvironmentIdentificationMode {
+  const settingsHydrated = useClientSettingsHydrated();
+  const mode = useClientSettingsValue().environmentIdentificationMode;
+  const { resolvedTheme, theme, themeHalves } = useTheme();
+  const previewSidebarArtwork = useSyncExternalStore(
+    subscribeToThemePreview,
+    getThemePreviewSidebarArtwork,
+    () => null,
+  );
+  const activeTheme = resolveThemeHalf(theme, themeHalves, resolvedTheme);
+  const activeThemeDefinition = getThemeDefinition(activeTheme);
+  return resolveEnvironmentIdentificationMode({
+    mode,
+    settingsHydrated,
+    paletteThemeActive: previewSidebarArtwork !== null || activeThemeDefinition !== null,
+    paletteThemeAllowsArtwork: previewSidebarArtwork ?? themeAllowsSidebarArtwork(activeTheme),
+  });
+}
+
+/** Read current settings for one environment, merged with client-local preferences. */
+export function useEnvironmentSettings<T = UnifiedSettings>(
+  environmentId: EnvironmentId,
+  selector?: (settings: UnifiedSettings) => T,
+): T {
+  const serverSettings = useAtomValue(serverEnvironment.settingsValueAtom(environmentId));
+  return useMergedSettings(serverSettings ?? DEFAULT_SERVER_SETTINGS, selector);
+}
+
+/** Atomically mutate one provider instance against the server's latest settings snapshot. */
+export function usePersistEnvironmentProviderInstanceMutation(environmentId: EnvironmentId) {
+  const mutateProviderInstance = useAtomCommand(serverEnvironment.mutateProviderInstance, {
+    reportFailure: false,
+  });
+  return useCallback(
+    (providerInstanceMutation: ProviderInstanceMutation, patch: ServerSettingsPatch = {}) =>
+      mutateProviderInstance({
+        environmentId,
+        input: { patch, providerInstanceMutation },
+      }),
+    [environmentId, mutateProviderInstance],
+  );
+}
+
+/**
+ * Returns an updater that routes each key to the correct backing store: server keys are
+ * persisted to the environment via RPC, client keys through client persistence.
+ */
+export function useUpdateEnvironmentSettings(environmentId: EnvironmentId) {
+  const persistServerSettings = useAtomCommand(
+    serverEnvironment.updateSettings,
+    "server settings update",
+  );
+  return useCallback(
+    (patch: UnifiedSettingsPatch) => {
+      const { serverPatch, clientPatch } = splitPatch(patch);
+      if (Object.keys(serverPatch).length > 0) {
+        void persistServerSettings({ environmentId, input: { patch: serverPatch } });
+      }
+      if (Object.keys(clientPatch).length > 0) {
+        void persistClientSettingsPatch(clientPatch);
+      }
+    },
+    [environmentId, persistServerSettings],
+  );
+}
+
+export function useUpdateClientSettings() {
+  return useCallback((patch: ClientSettingsPatch) => {
+    return persistClientSettingsPatch(patch);
+  }, []);
+}
+
+export function __resetClientSettingsPersistenceForTests(): void {
+  clientSettingsHydrationGeneration += 1;
+  clientSettingsSnapshot = DEFAULT_CLIENT_SETTINGS;
+  clientSettingsHydrationStatus = "pending";
+  clientSettingsHydrationPromise = null;
+  clientSettingsPersistenceQueue = Promise.resolve();
+  deferredClientSettingsPatchCount = 0;
+  clientSettingsListeners.clear();
+  clientSettingsHydrationListeners.clear();
+}
+
+export function __setClientSettingsForTests(settings: ClientSettings): void {
+  clientSettingsHydrationGeneration += 1;
+  clientSettingsSnapshot = settings;
+  clientSettingsHydrationStatus = "ready";
+  clientSettingsHydrationPromise = null;
+}
