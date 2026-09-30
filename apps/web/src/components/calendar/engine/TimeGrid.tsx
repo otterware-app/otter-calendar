@@ -343,7 +343,7 @@ const TimeGridColumn = memo(function TimeGridColumn({
 }) {
   // Short blocks are drawn at a minimum height; pack them as if they lasted that long.
   const minVisualMinutes = Math.ceil(((MIN_BLOCK_PX / hourHeight) * 60) / 5) * 5;
-  const placements = layoutDayCached(segments, { minVisualMinutes });
+  const placements = layoutDayCached(segments, { minVisualMinutes, cascade: true });
   const dayLabel = formatShortDate(day);
   const pxPerMinute = hourHeight / 60;
   return (

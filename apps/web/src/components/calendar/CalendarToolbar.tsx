@@ -223,7 +223,7 @@ export function CalendarToolbar({
       <ToggleGroup
         aria-label="View"
         variant="segmented"
-        className="ms-1 max-lg:hidden"
+        className="ms-1 max-xl:hidden"
         value={[view]}
         onValueChange={(next) => {
           const picked = next[0];
@@ -247,7 +247,7 @@ export function CalendarToolbar({
       <Menu>
         <MenuTrigger
           render={
-            <Button size="sm" variant="outline" className="ms-1 lg:hidden" aria-label="View" />
+            <Button size="sm" variant="outline" className="ms-1 xl:hidden" aria-label="View" />
           }
         >
           {viewLabel(view, customDays)}

@@ -211,10 +211,14 @@
    The title span, then the time from data-time (::before, moved after the title with `order`),
    then the location span on large blocks. data-size picks one line (xs, sm) or a column. */
 
+/* Overlapping events cascade (each later column sits on top and reaches further right), so a
+   background-colored edge keeps stacked blocks apart. Borders, not shadows: they paint cheaply. */
 [data-calendar-event][data-timed] {
   min-height: var(--event-min-height);
   flex-direction: column;
-  padding: 2px 5px;
+  border-block: 1px solid var(--background);
+  border-inline-end: 1px solid var(--background);
+  padding: 1px 4px;
   font-size: 12px;
   line-height: 15px;
 }
