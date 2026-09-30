@@ -19,5 +19,5 @@ export * from "./server.ts";
 export * from "./settings.ts";
 export * from "./orchestrationV2.ts";
 export * from "./agent.ts";
-export * from "./notes.ts";
+export * from "./calendar.ts";
 export * from "./rpc.ts";

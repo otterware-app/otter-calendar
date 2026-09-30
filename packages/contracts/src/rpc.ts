@@ -27,13 +27,31 @@ import {
 import { TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import {
-  Note,
-  NoteCreateInput,
-  NoteRefInput,
-  NotesError,
-  NotesEvent,
-  NoteUpdateInput,
-} from "./notes.ts";
+  CalendarAccountRefInput,
+  CalendarAddDemoInput,
+  CalendarApplyChangesInput,
+  CalendarCreateEventInput,
+  CalendarDeleteEventInput,
+  CalendarDirectory,
+  CalendarError,
+  CalendarEventDetails,
+  CalendarEventRefInput,
+  CalendarMutationResult,
+  CalendarPreferencesPatch,
+  CalendarRespondInput,
+  CalendarRestoreEventInput,
+  CalendarSearchInput,
+  CalendarSearchResult,
+  CalendarSyncInput,
+  CalendarUpdateCalendarInput,
+  CalendarUpdateEventInput,
+  CalendarWeekEvent,
+  CalendarWeekInput,
+  GoogleClientInput,
+  GoogleConnectCompleteInput,
+  GoogleConnectInput,
+  GoogleConnectState,
+} from "./calendar.ts";
 import { ProviderInstanceId, ProviderInstanceMutation } from "./providerInstance.ts";
 import {
   ChatGptHandoffInput,
@@ -133,11 +151,26 @@ export const WS_METHODS = {
   agentSubscribeThreads: "agent.subscribeThreads",
   agentSubscribeThread: "agent.subscribeThread",
 
-  // Notes (the example feature)
-  notesCreate: "notes.create",
-  notesUpdate: "notes.update",
-  notesDelete: "notes.delete",
-  notesSubscribe: "notes.subscribe",
+  // Calendar
+  calendarSubscribeDirectory: "calendar.subscribeDirectory",
+  calendarSubscribeWeek: "calendar.subscribeWeek",
+  calendarGetEvent: "calendar.getEvent",
+  calendarSearch: "calendar.search",
+  calendarCreateEvent: "calendar.createEvent",
+  calendarUpdateEvent: "calendar.updateEvent",
+  calendarDeleteEvent: "calendar.deleteEvent",
+  calendarRespond: "calendar.respond",
+  calendarRestoreEvent: "calendar.restoreEvent",
+  calendarApplyChanges: "calendar.applyChanges",
+  calendarUpdateCalendar: "calendar.updateCalendar",
+  calendarUpdatePreferences: "calendar.updatePreferences",
+  calendarSync: "calendar.sync",
+  calendarRemoveAccount: "calendar.removeAccount",
+  calendarAddDemo: "calendar.addDemo",
+  calendarGoogleConnect: "calendar.google.connect",
+  calendarGoogleConnectComplete: "calendar.google.connectComplete",
+  calendarGoogleSetClient: "calendar.google.setClient",
+  calendarGoogleClearClient: "calendar.google.clearClient",
 
   // Streaming subscriptions
   subscribeServerConfig: "subscribeServerConfig",
@@ -417,32 +450,122 @@ const WsAgentSubscribeThreadRpc = Rpc.make(WS_METHODS.agentSubscribeThread, {
   stream: true,
 });
 
-// ── Notes ────────────────────────────────────────────────────────────
+// ── Calendar ─────────────────────────────────────────────────────────
 
-const NotesRpcError = Schema.Union([NotesError, EnvironmentAuthorizationError]);
+const CalendarRpcError = Schema.Union([CalendarError, EnvironmentAuthorizationError]);
 
-const WsNotesCreateRpc = Rpc.make(WS_METHODS.notesCreate, {
-  payload: NoteCreateInput,
-  success: Note,
-  error: NotesRpcError,
-});
-
-const WsNotesUpdateRpc = Rpc.make(WS_METHODS.notesUpdate, {
-  payload: NoteUpdateInput,
-  success: Note,
-  error: NotesRpcError,
-});
-
-const WsNotesDeleteRpc = Rpc.make(WS_METHODS.notesDelete, {
-  payload: NoteRefInput,
-  error: NotesRpcError,
-});
-
-const WsNotesSubscribeRpc = Rpc.make(WS_METHODS.notesSubscribe, {
+/** Accounts, calendars, preferences and the Google client state: a snapshot on every change. */
+const WsCalendarSubscribeDirectoryRpc = Rpc.make(WS_METHODS.calendarSubscribeDirectory, {
   payload: Schema.Struct({}),
-  success: NotesEvent,
-  error: NotesRpcError,
+  success: CalendarDirectory,
+  error: CalendarRpcError,
   stream: true,
+});
+
+/** One week chunk of visible instances: a snapshot, then changes. */
+const WsCalendarSubscribeWeekRpc = Rpc.make(WS_METHODS.calendarSubscribeWeek, {
+  payload: CalendarWeekInput,
+  success: CalendarWeekEvent,
+  error: CalendarRpcError,
+  stream: true,
+});
+
+const WsCalendarGetEventRpc = Rpc.make(WS_METHODS.calendarGetEvent, {
+  payload: CalendarEventRefInput,
+  success: CalendarEventDetails,
+  error: CalendarRpcError,
+});
+
+const WsCalendarSearchRpc = Rpc.make(WS_METHODS.calendarSearch, {
+  payload: CalendarSearchInput,
+  success: CalendarSearchResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarCreateEventRpc = Rpc.make(WS_METHODS.calendarCreateEvent, {
+  payload: CalendarCreateEventInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarUpdateEventRpc = Rpc.make(WS_METHODS.calendarUpdateEvent, {
+  payload: CalendarUpdateEventInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarDeleteEventRpc = Rpc.make(WS_METHODS.calendarDeleteEvent, {
+  payload: CalendarDeleteEventInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarRespondRpc = Rpc.make(WS_METHODS.calendarRespond, {
+  payload: CalendarRespondInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarRestoreEventRpc = Rpc.make(WS_METHODS.calendarRestoreEvent, {
+  payload: CalendarRestoreEventInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+/** Runs undo (or redo) steps in order; answers with the steps that revert them. */
+const WsCalendarApplyChangesRpc = Rpc.make(WS_METHODS.calendarApplyChanges, {
+  payload: CalendarApplyChangesInput,
+  success: CalendarMutationResult,
+  error: CalendarRpcError,
+});
+
+const WsCalendarUpdateCalendarRpc = Rpc.make(WS_METHODS.calendarUpdateCalendar, {
+  payload: CalendarUpdateCalendarInput,
+  error: CalendarRpcError,
+});
+
+const WsCalendarUpdatePreferencesRpc = Rpc.make(WS_METHODS.calendarUpdatePreferences, {
+  payload: CalendarPreferencesPatch,
+  error: CalendarRpcError,
+});
+
+const WsCalendarSyncRpc = Rpc.make(WS_METHODS.calendarSync, {
+  payload: CalendarSyncInput,
+  error: CalendarRpcError,
+});
+
+const WsCalendarRemoveAccountRpc = Rpc.make(WS_METHODS.calendarRemoveAccount, {
+  payload: CalendarAccountRefInput,
+  error: CalendarRpcError,
+});
+
+const WsCalendarAddDemoRpc = Rpc.make(WS_METHODS.calendarAddDemo, {
+  payload: CalendarAddDemoInput,
+  error: CalendarRpcError,
+});
+
+/** Starts a Google sign-in and streams its state; ending the stream cancels an open flow. */
+const WsCalendarGoogleConnectRpc = Rpc.make(WS_METHODS.calendarGoogleConnect, {
+  payload: GoogleConnectInput,
+  success: GoogleConnectState,
+  error: CalendarRpcError,
+  stream: true,
+});
+
+/** Hands the environment the redirect URL a client caught or the user pasted. */
+const WsCalendarGoogleConnectCompleteRpc = Rpc.make(WS_METHODS.calendarGoogleConnectComplete, {
+  payload: GoogleConnectCompleteInput,
+  error: CalendarRpcError,
+});
+
+const WsCalendarGoogleSetClientRpc = Rpc.make(WS_METHODS.calendarGoogleSetClient, {
+  payload: GoogleClientInput,
+  error: CalendarRpcError,
+});
+
+const WsCalendarGoogleClearClientRpc = Rpc.make(WS_METHODS.calendarGoogleClearClient, {
+  payload: Schema.Struct({}),
+  error: CalendarRpcError,
 });
 
 // ── Subscriptions ────────────────────────────────────────────────────
@@ -524,10 +647,25 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentRespondToRequestRpc,
   WsAgentSubscribeThreadsRpc,
   WsAgentSubscribeThreadRpc,
-  WsNotesCreateRpc,
-  WsNotesUpdateRpc,
-  WsNotesDeleteRpc,
-  WsNotesSubscribeRpc,
+  WsCalendarSubscribeDirectoryRpc,
+  WsCalendarSubscribeWeekRpc,
+  WsCalendarGetEventRpc,
+  WsCalendarSearchRpc,
+  WsCalendarCreateEventRpc,
+  WsCalendarUpdateEventRpc,
+  WsCalendarDeleteEventRpc,
+  WsCalendarRespondRpc,
+  WsCalendarRestoreEventRpc,
+  WsCalendarApplyChangesRpc,
+  WsCalendarUpdateCalendarRpc,
+  WsCalendarUpdatePreferencesRpc,
+  WsCalendarSyncRpc,
+  WsCalendarRemoveAccountRpc,
+  WsCalendarAddDemoRpc,
+  WsCalendarGoogleConnectRpc,
+  WsCalendarGoogleConnectCompleteRpc,
+  WsCalendarGoogleSetClientRpc,
+  WsCalendarGoogleClearClientRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,

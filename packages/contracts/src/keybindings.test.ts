@@ -28,14 +28,14 @@ it.effect("parses keybinding rules", () =>
       "sidebar.toggle",
       "commandPalette.toggle",
       "agent.toggle",
-      "notes.new",
+      "calendar.create",
     ]) {
       const parsed = yield* decode(KeybindingRule, { key: "mod+j", command });
       assert.strictEqual(parsed.command, command);
     }
     const parsedWithWhen = yield* decode(KeybindingRule, {
       key: "mod+n",
-      command: "notes.new",
+      command: "calendar.create",
       when: "!editableFocus",
     });
     assert.strictEqual(parsedWithWhen.when, "!editableFocus");
@@ -59,7 +59,7 @@ it.effect("parses keybindings array payload", () =>
     const parsed = yield* decode(KeybindingsConfig, [
       { key: "mod+b", command: "sidebar.toggle" },
       { key: "mod+i", command: "agent.toggle" },
-      { key: "mod+n", command: "notes.new", when: "!editableFocus" },
+      { key: "mod+n", command: "calendar.create", when: "!editableFocus" },
     ]);
     assert.lengthOf(parsed, 3);
   }),
@@ -105,7 +105,7 @@ it.effect("parses resolved keybindings arrays", () =>
         },
       },
       {
-        command: "notes.new",
+        command: "calendar.create",
         shortcut: {
           key: "3",
           metaKey: false,

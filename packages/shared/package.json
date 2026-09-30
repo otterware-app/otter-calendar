@@ -202,6 +202,14 @@
     "./codexAuthHandoff": {
       "types": "./src/codexAuthHandoff.ts",
       "import": "./src/codexAuthHandoff.ts"
+    },
+    "./calendar/time": {
+      "types": "./src/calendar/time.ts",
+      "import": "./src/calendar/time.ts"
+    },
+    "./calendar/recurrence": {
+      "types": "./src/calendar/recurrence.ts",
+      "import": "./src/calendar/recurrence.ts"
     }
   },
   "scripts": {

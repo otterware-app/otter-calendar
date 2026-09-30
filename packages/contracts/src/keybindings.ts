@@ -17,7 +17,19 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "themeEditor.toggle",
   "agent.toggle",
   "agent.new",
-  "notes.new",
+  "calendar.today",
+  "calendar.next",
+  "calendar.previous",
+  "calendar.view.day",
+  "calendar.view.week",
+  "calendar.view.month",
+  "calendar.view.agenda",
+  "calendar.view.custom",
+  "calendar.create",
+  "calendar.search",
+  "calendar.goToDate",
+  "calendar.undo",
+  "calendar.redo",
 ] as const;
 
 export const KeybindingCommand = Schema.Literals(STATIC_KEYBINDING_COMMANDS);
