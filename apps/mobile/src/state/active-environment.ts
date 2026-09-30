@@ -13,7 +13,7 @@ const selectedEnvironmentIdAtom = Atom.make<EnvironmentId | null>(null).pipe(
 );
 
 /**
- * The environment whose notes and agent the app shows: the user's pick while it is still
+ * The environment whose calendar and agent the app shows: the user's pick while it is still
  * saved and switched on, otherwise the first connected one, otherwise the first switched on.
  */
 export function resolveActiveEnvironment(

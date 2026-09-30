@@ -107,7 +107,7 @@ function NewAgentThread(props: { readonly environmentId: EnvironmentId }) {
           <EmptyState
             variant="plain"
             title="Ask the agent"
-            detail="It can read and change your notes, and answer questions about them."
+            detail="It can read and change your calendars, and answer questions about your schedule."
           />
         </View>
         <ComposerArea>

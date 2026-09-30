@@ -5,18 +5,24 @@ import type { Icon } from "@tabler/icons-react-native/types";
  */
 import IconAlertCircle from "@tabler/icons-react-native/IconAlertCircle";
 import IconAlertTriangle from "@tabler/icons-react-native/IconAlertTriangle";
+import IconAlignLeft from "@tabler/icons-react-native/IconAlignLeft";
 import IconArrowLeft from "@tabler/icons-react-native/IconArrowLeft";
 import IconArrowUp from "@tabler/icons-react-native/IconArrowUp";
 import IconArrowUpCircle from "@tabler/icons-react-native/IconArrowUpCircle";
 import IconArrowUpRight from "@tabler/icons-react-native/IconArrowUpRight";
 import IconBolt from "@tabler/icons-react-native/IconBolt";
+import IconCalendar from "@tabler/icons-react-native/IconCalendar";
+import IconCalendarEvent from "@tabler/icons-react-native/IconCalendarEvent";
 import IconCamera from "@tabler/icons-react-native/IconCamera";
 import IconCheck from "@tabler/icons-react-native/IconCheck";
 import IconCloud from "@tabler/icons-react-native/IconCloud";
 import IconChevronDown from "@tabler/icons-react-native/IconChevronDown";
+import IconChevronLeft from "@tabler/icons-react-native/IconChevronLeft";
 import IconChevronRight from "@tabler/icons-react-native/IconChevronRight";
 import IconCircle from "@tabler/icons-react-native/IconCircle";
 import IconCircleCheck from "@tabler/icons-react-native/IconCircleCheck";
+import IconCircleX from "@tabler/icons-react-native/IconCircleX";
+import IconClock from "@tabler/icons-react-native/IconClock";
 import IconCopy from "@tabler/icons-react-native/IconCopy";
 import IconDatabase from "@tabler/icons-react-native/IconDatabase";
 import IconDeviceDesktop from "@tabler/icons-react-native/IconDeviceDesktop";
@@ -27,8 +33,10 @@ import IconEdit from "@tabler/icons-react-native/IconEdit";
 import IconExternalLink from "@tabler/icons-react-native/IconExternalLink";
 import IconFileText from "@tabler/icons-react-native/IconFileText";
 import IconHammer from "@tabler/icons-react-native/IconHammer";
+import IconHelpCircle from "@tabler/icons-react-native/IconHelpCircle";
 import IconInfoCircle from "@tabler/icons-react-native/IconInfoCircle";
 import IconLink from "@tabler/icons-react-native/IconLink";
+import IconMapPin from "@tabler/icons-react-native/IconMapPin";
 import IconMoon from "@tabler/icons-react-native/IconMoon";
 import IconNetwork from "@tabler/icons-react-native/IconNetwork";
 import IconPalette from "@tabler/icons-react-native/IconPalette";
@@ -40,6 +48,7 @@ import IconPlayerStopFilled from "@tabler/icons-react-native/IconPlayerStopFille
 import IconPlus from "@tabler/icons-react-native/IconPlus";
 import IconQrcode from "@tabler/icons-react-native/IconQrcode";
 import IconRefresh from "@tabler/icons-react-native/IconRefresh";
+import IconRepeat from "@tabler/icons-react-native/IconRepeat";
 import IconSearch from "@tabler/icons-react-native/IconSearch";
 import IconServer from "@tabler/icons-react-native/IconServer";
 import IconSettings from "@tabler/icons-react-native/IconSettings";
@@ -53,6 +62,7 @@ import IconTrash from "@tabler/icons-react-native/IconTrash";
 import IconTypography from "@tabler/icons-react-native/IconTypography";
 import IconUserCircle from "@tabler/icons-react-native/IconUserCircle";
 import IconUsers from "@tabler/icons-react-native/IconUsers";
+import IconVideo from "@tabler/icons-react-native/IconVideo";
 import IconWifiOff from "@tabler/icons-react-native/IconWifiOff";
 import IconWorld from "@tabler/icons-react-native/IconWorld";
 import IconX from "@tabler/icons-react-native/IconX";
@@ -66,13 +76,17 @@ const ANDROID_ICON_BY_SF_SYMBOL = {
   "arrow.up.circle": IconArrowUpCircle,
   "arrow.up.right": IconArrowUpRight,
   "bolt.horizontal.circle": IconBolt,
+  calendar: IconCalendar,
+  "calendar.day.timeline.left": IconCalendarEvent,
   camera: IconCamera,
   checkmark: IconCheck,
   "checkmark.circle": IconCircleCheck,
   circle: IconCircle,
   cloud: IconCloud,
   "chevron.down": IconChevronDown,
+  "chevron.left": IconChevronLeft,
   "chevron.right": IconChevronRight,
+  clock: IconClock,
   desktopcomputer: IconDeviceDesktop,
   "doc.on.doc": IconCopy,
   "doc.text": IconFileText,
@@ -87,6 +101,7 @@ const ANDROID_ICON_BY_SF_SYMBOL = {
   internaldrive: IconDatabase,
   laptopcomputer: IconDeviceLaptop,
   link: IconLink,
+  "mappin.and.ellipse": IconMapPin,
   // Tabler has no Apple desktops; the closest silhouettes stand in on Android.
   macmini: IconServer,
   macstudio: IconDeviceDesktop,
@@ -100,6 +115,8 @@ const ANDROID_ICON_BY_SF_SYMBOL = {
   "pin.slash": IconPinnedOff,
   plus: IconPlus,
   "qrcode.viewfinder": IconQrcode,
+  "questionmark.circle": IconHelpCircle,
+  repeat: IconRepeat,
   "point.3.connected.trianglepath.dotted": IconNetwork,
   safari: IconExternalLink,
   "server.rack": IconServer,
@@ -109,12 +126,15 @@ const ANDROID_ICON_BY_SF_SYMBOL = {
   "sun.max": IconSun,
   "stop.fill": IconPlayerStopFilled,
   terminal: IconTerminal2,
+  "text.alignleft": IconAlignLeft,
   "textformat.size": IconTypography,
   "textformat.size.larger": IconTextIncrease,
   "textformat.size.smaller": IconTextDecrease,
   trash: IconTrash,
+  video: IconVideo,
   "wifi.slash": IconWifiOff,
   xmark: IconX,
+  "xmark.circle": IconCircleX,
 } satisfies Partial<Record<SFSymbol, Icon>>;
 const SF_ICON_LOOKUP: Partial<Record<SFSymbol, Icon>> = ANDROID_ICON_BY_SF_SYMBOL;
 

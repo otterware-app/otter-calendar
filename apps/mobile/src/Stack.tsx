@@ -18,12 +18,14 @@ import {
 } from "./components/RenderErrorBoundary";
 import { AgentThreadRouteScreen } from "./features/agent/AgentThreadRouteScreen";
 import { AgentThreadsRouteScreen } from "./features/agent/AgentThreadsRouteScreen";
+import { CalendarAgendaRouteScreen } from "./features/calendar/CalendarAgendaRouteScreen";
+import { CalendarCalendarsRouteScreen } from "./features/calendar/CalendarCalendarsRouteScreen";
+import { CalendarDayRouteScreen } from "./features/calendar/CalendarDayRouteScreen";
+import { CalendarEventRouteScreen } from "./features/calendar/CalendarEventRouteScreen";
 import { ConnectOnboardingRouteScreen } from "./features/cloud/ConnectOnboardingRouteScreen";
 import { useConnectOnboardingNavigation } from "./features/cloud/connectOnboardingNavigation";
 import { ConnectionsNewRouteScreen } from "./features/connection/ConnectionsNewRouteScreen";
 import { SettingsDiagnosticsRouteScreen } from "./features/diagnostics/SettingsDiagnosticsRouteScreen";
-import { NoteRouteScreen } from "./features/notes/NoteRouteScreen";
-import { NotesRouteScreen } from "./features/notes/NotesRouteScreen";
 import { SettingsAboutRouteScreen } from "./features/settings/SettingsAboutRouteScreen";
 import { SettingsAppearanceRouteScreen } from "./features/settings/SettingsAppearanceRouteScreen";
 import { SettingsAuthRouteScreen } from "./features/settings/SettingsAuthRouteScreen";
@@ -74,7 +76,7 @@ const GLASS_HEADER_OPTIONS: AppScreenOptions = {
 };
 
 // SOLID: opaque header for screens whose content scrolls internally (the chat
-// list and the note editor), where there is nothing for glass to sample.
+// list and the day grid), where there is nothing for glass to sample.
 const SOLID_HEADER_OPTIONS: AppScreenOptions = {
   headerBackButtonDisplayMode: "minimal",
   headerBackTitle: "",
@@ -90,6 +92,19 @@ const SHEET_SOLID_HEADER_OPTIONS: AppScreenOptions = {
   ...SOLID_HEADER_OPTIONS,
   unstable_navigationItemStyle: undefined,
 };
+
+// Calendar sheets: an iOS form sheet with its own bar; a pushed screen on Android, like the
+// Settings sheet, whose in-flow header supplies the back button.
+const CALENDAR_SHEET_OPTIONS: AppScreenOptions =
+  Platform.OS === "android"
+    ? { headerShown: false, presentation: "card" }
+    : {
+        ...SHEET_SOLID_HEADER_OPTIONS,
+        gestureEnabled: true,
+        ...FORM_SHEET_PRESENTATION_OPTIONS,
+        sheetAllowedDetents: [0.6, 0.95],
+        sheetGrabberVisible: true,
+      };
 
 const LEGAL_DOCUMENT_HEADER_OPTIONS: AppScreenOptions = {
   ...SHEET_SOLID_HEADER_OPTIONS,
@@ -230,7 +245,7 @@ const RootStackConfig = createNativeStackNavigator({
   },
   screens: {
     Home: createNativeStackScreen({
-      screen: NotesRouteScreen,
+      screen: CalendarAgendaRouteScreen,
       linking: "",
       options: {
         ...GLASS_HEADER_OPTIONS,
@@ -238,10 +253,20 @@ const RootStackConfig = createNativeStackNavigator({
         ...getCompactBrandHeaderOptions(),
       },
     }),
-    Note: createNativeStackScreen({
-      screen: NoteRouteScreen,
-      linking: "notes/:environmentId/:noteId?",
+    CalendarDay: createNativeStackScreen({
+      screen: CalendarDayRouteScreen,
+      linking: "calendar/day/:date?",
       options: SOLID_HEADER_OPTIONS,
+    }),
+    CalendarEvent: createNativeStackScreen({
+      screen: CalendarEventRouteScreen,
+      linking: "calendar/event/:environmentId/:calendarId/:eventId",
+      options: { ...CALENDAR_SHEET_OPTIONS, title: "Event" },
+    }),
+    CalendarCalendars: createNativeStackScreen({
+      screen: CalendarCalendarsRouteScreen,
+      linking: "calendar/calendars",
+      options: { ...CALENDAR_SHEET_OPTIONS, title: "Calendars" },
     }),
     AgentThreads: createNativeStackScreen({
       screen: AgentThreadsRouteScreen,
