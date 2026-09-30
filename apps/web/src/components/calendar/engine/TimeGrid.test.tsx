@@ -69,6 +69,10 @@ function stubLayout() {
     if (this.hasAttribute("data-calendar-columns")) {
       return new DOMRect(GUTTER_PX, HEADER_PX - scrollTop, COLUMN_PX * 7, 1440);
     }
+    // The standup block, Wednesday 10:00–10:30, inset by its 1 px gap.
+    if (this.dataset.eventKey === "cal/standup") {
+      return new DOMRect(GUTTER_PX + 2 * COLUMN_PX, HEADER_PX - scrollTop + 601, 90, 28);
+    }
     return new DOMRect(0, 0, 0, 0);
   });
 }
@@ -228,11 +232,11 @@ describe("TimeGrid gestures", () => {
 
   it("resizes from the bottom edge and draws new events on empty space", () => {
     const grid = renderGrid();
-    const handle = container.querySelector<HTMLElement>(
-      '[data-event-key="cal/standup"] [data-resize="end"]',
-    )!;
-    const edge = point(2, 630);
-    pointer("pointerdown", handle, edge.x, edge.y);
+    // The bottom 6 px of the block resize it; there is no handle element.
+    const block = container.querySelector<HTMLElement>('[data-event-key="cal/standup"]')!;
+    expect(block.childElementCount).toBe(1);
+    const edge = point(2, 627);
+    pointer("pointerdown", block, edge.x, edge.y);
     const target = point(2, 718);
     pointer("pointermove", document, target.x, target.y);
     flushFrames();

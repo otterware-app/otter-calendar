@@ -29,7 +29,7 @@ import {
 
 import { cn } from "~/lib/utils";
 
-import { EventBar, TimedEventBlock } from "./EventViews";
+import { EventBar, TimedEventBlock, blockSize } from "./EventViews";
 import { EMPTY_KEYS, eventColor, isEventReadOnly } from "./eventAppearance";
 import { TimeGridController, type TimeGridModel } from "./timeGridController";
 import type { TimeGridProps } from "./types";
@@ -90,7 +90,6 @@ export function TimeGrid(props: TimeGridProps) {
 
   const now = useMinuteClock();
   const nowMinutes = toZoned(now, timeZone).minutes;
-  const minVisualMinutes = Math.ceil(((MIN_BLOCK_PX / hourHeight) * 60) / 5) * 5;
   const gridColumns = { gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` };
 
   // Per column, only the selection and pending keys that concern it, so the rest stay memoized.
@@ -219,7 +218,7 @@ export function TimeGrid(props: TimeGridProps) {
                 day={day}
                 index={index}
                 segments={buckets.timed[index]!}
-                minVisualMinutes={minVisualMinutes}
+                hourHeight={hourHeight}
                 pastUntil={day < today ? 1440 : day === today ? nowMinutes : 0}
                 workStart={workingBound(preferences.workingHours, day, "start")}
                 workEnd={workingBound(preferences.workingHours, day, "end")}
@@ -244,6 +243,7 @@ export function TimeGrid(props: TimeGridProps) {
           </div>
         </div>
       </div>
+      <div data-gesture-shield="" aria-hidden />
       <div ref={liveRef} aria-live="polite" className="sr-only" />
     </div>
   );
@@ -317,7 +317,7 @@ const TimeGridColumn = memo(function TimeGridColumn({
   day,
   index,
   segments,
-  minVisualMinutes,
+  hourHeight,
   pastUntil,
   workStart,
   workEnd,
@@ -330,7 +330,7 @@ const TimeGridColumn = memo(function TimeGridColumn({
   day: DayNumber;
   index: number;
   segments: ReadonlyArray<TimedSegment>;
-  minVisualMinutes: number;
+  hourHeight: number;
   /** Events ending at or before this minute of the day are past (0 none, 1440 all). */
   pastUntil: number;
   workStart: number;
@@ -341,8 +341,11 @@ const TimeGridColumn = memo(function TimeGridColumn({
   timeZone: string;
   hourFormat: HourFormat;
 }) {
+  // Short blocks are drawn at a minimum height; pack them as if they lasted that long.
+  const minVisualMinutes = Math.ceil(((MIN_BLOCK_PX / hourHeight) * 60) / 5) * 5;
   const placements = layoutDayCached(segments, { minVisualMinutes });
   const dayLabel = formatShortDate(day);
+  const pxPerMinute = hourHeight / 60;
   return (
     <div
       data-calendar-column=""
@@ -351,18 +354,30 @@ const TimeGridColumn = memo(function TimeGridColumn({
       style={{ "--work-start": workStart, "--work-end": workEnd } as CSSProperties}
     >
       <div className="absolute inset-y-0 start-0 end-2">
-        {placements.map((placement) => {
-          const { instance } = placement.segment;
+        {placements.map(({ segment, left, width, zIndex }) => {
+          const { instance, key, startMinutes, endMinutes } = segment;
           return (
             <TimedEventBlock
-              key={placement.segment.key}
-              placement={placement}
+              key={key}
+              instance={instance}
+              eventKey={key}
+              startMinutes={startMinutes}
+              endMinutes={endMinutes}
+              left={left}
+              width={width}
+              zIndex={zIndex}
+              continuesBefore={segment.continuesBefore}
+              continuesAfter={segment.continuesAfter}
+              size={blockSize(
+                Math.max(MIN_BLOCK_PX, (endMinutes - startMinutes) * pxPerMinute - 2),
+              )}
+              narrow={width <= 0.25}
               dayLabel={dayLabel}
               color={eventColor(instance, calendars)}
               readOnly={isEventReadOnly(instance, calendars)}
-              selected={placement.segment.key === selectedKey}
-              pending={pendingKeys.has(placement.segment.key)}
-              past={placement.segment.endMinutes <= pastUntil}
+              selected={key === selectedKey}
+              pending={pendingKeys.has(key)}
+              past={endMinutes <= pastUntil}
               timeZone={timeZone}
               hourFormat={hourFormat}
             />

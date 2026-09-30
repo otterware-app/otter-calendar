@@ -26,34 +26,6 @@ export function flag(value: boolean): "" | undefined {
   return value ? "" : undefined;
 }
 
-export interface EventStateAttributes {
-  readonly "data-response"?: string;
-  readonly "data-tentative"?: "";
-  readonly "data-free"?: "";
-  readonly "data-past"?: "";
-  readonly "data-selected"?: "";
-  readonly "data-pending"?: "";
-}
-
-/** Data attributes engine.css styles event states with. */
-export function eventStateAttributes(
-  instance: CalendarEventInstance,
-  state: { readonly past: boolean; readonly selected: boolean; readonly pending: boolean },
-): EventStateAttributes {
-  const attributes: {
-    -readonly [K in keyof EventStateAttributes]: EventStateAttributes[K];
-  } = {};
-  if (instance.response !== undefined && instance.response !== "accepted") {
-    attributes["data-response"] = instance.response;
-  }
-  if (instance.tentative === true) attributes["data-tentative"] = "";
-  if (instance.free === true) attributes["data-free"] = "";
-  if (state.past) attributes["data-past"] = "";
-  if (state.selected) attributes["data-selected"] = "";
-  if (state.pending) attributes["data-pending"] = "";
-  return attributes;
-}
-
 export function eventColorStyle(color: string): CSSProperties {
   return { "--event-color": color } as CSSProperties;
 }

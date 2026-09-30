@@ -88,6 +88,36 @@ export function hitTimeGrid(
   };
 }
 
+/**
+ * The resize edge a press hits in an event's rect: the top or bottom band of a timed block, or
+ * the end of a bar. Bands are 6 px (12–14 px for touch), at most a third of the event.
+ */
+export function resizeEdge(
+  rect: {
+    readonly top: number;
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+  },
+  x: number,
+  y: number,
+  options: {
+    readonly vertical: boolean;
+    readonly start: boolean;
+    readonly end: boolean;
+    readonly coarse: boolean;
+  },
+): "start" | "end" | null {
+  if (options.vertical) {
+    const band = Math.min(options.coarse ? 12 : 6, (rect.bottom - rect.top) / 3);
+    if (options.end && rect.bottom - y <= band) return "end";
+    if (options.start && y - rect.top <= band) return "start";
+    return null;
+  }
+  const band = Math.min(options.coarse ? 14 : 6, (rect.right - rect.left) / 3);
+  return options.end && rect.right - x <= band ? "end" : null;
+}
+
 // ── Proposed times ───────────────────────────────────────────────────
 
 function instantAt(dayMinutes: number, zone: string): number {

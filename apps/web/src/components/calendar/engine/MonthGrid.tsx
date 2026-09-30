@@ -4,7 +4,7 @@ import {
   DayBucketCache,
   type DayBuckets,
   type SpanItem,
-  sameSpanList,
+  reuseSpans,
   sliceSpans,
 } from "@t3tools/client-runtime/calendar/days";
 import {
@@ -70,7 +70,7 @@ class RowItemsCache {
       }
       const first = buckets.days[start]!;
       const previous = this.rows.get(first);
-      const reused = previous !== undefined && sameSpanList(previous, items) ? previous : items;
+      const reused = reuseSpans(previous, items);
       next.set(first, reused);
       result.push(reused);
     }
@@ -233,6 +233,7 @@ export function MonthGrid(props: MonthGridProps) {
           );
         })}
       </div>
+      <div data-gesture-shield="" aria-hidden />
       <div ref={liveRef} aria-live="polite" className="sr-only" />
     </div>
   );

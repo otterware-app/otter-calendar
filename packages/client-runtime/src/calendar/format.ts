@@ -20,6 +20,7 @@ export function setCalendarLocale(locale: string | undefined): void {
   calendarLocale = locale;
   formatters.clear();
   twelveHourCache.clear();
+  minuteLabels.clear();
 }
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
@@ -84,8 +85,28 @@ interface TimeParts {
   readonly withoutPeriod: string;
 }
 
+/** Formatted wall-clock minutes (0–1439) per hour format: a view repeats the same few times. */
+const minuteLabels = new Map<HourFormat, Array<TimeParts | undefined>>();
+
 function timeParts(ms: number, zone: string, hourFormat: HourFormat): TimeParts {
-  const parts = formatter(timeOptions(hourFormat, zone)).formatToParts(ms);
+  // The label depends only on the wall-clock minute, so format that once in UTC and reuse it
+  // for every instant (and zone) that shows the same time.
+  const minute = Math.floor(toZoned(ms, zone).minutes);
+  let labels = minuteLabels.get(hourFormat);
+  if (labels === undefined) {
+    labels = [];
+    minuteLabels.set(hourFormat, labels);
+  }
+  let cached = labels[minute];
+  if (cached === undefined) {
+    cached = formatMinuteParts(minute * MINUTE_MS, hourFormat);
+    labels[minute] = cached;
+  }
+  return cached;
+}
+
+function formatMinuteParts(ms: number, hourFormat: HourFormat): TimeParts {
+  const parts = formatter(timeOptions(hourFormat, "UTC")).formatToParts(ms);
   const twelve = usesTwelveHour(hourFormat);
   let period: string | null = null;
   let text = "";

@@ -32,7 +32,7 @@ import {
   timedGhostSegments,
   visibleSpan,
 } from "./geometry";
-import { type GesturePlan, type GestureHost, PointerGestures } from "./gestures";
+import { type GesturePlan, type GestureHost, PointerGestures, pressedEdge } from "./gestures";
 import {
   Announcer,
   NudgeBatch,
@@ -111,12 +111,14 @@ export class TimeGridController implements GestureHost {
     el.root.addEventListener("keydown", this.onKeyDown);
     el.root.addEventListener("focusin", this.onFocusIn);
     el.root.addEventListener("focusout", this.onFocusOut);
+    el.root.addEventListener("wheel", this.onWheel, { passive: true });
   }
 
   dispose(): void {
     this.nudges.flush();
     this.gestures.dispose();
     this.announcer.dispose();
+    this.el.root.removeEventListener("wheel", this.onWheel);
     this.el.root.removeEventListener("click", this.onClick);
     this.el.root.removeEventListener("keydown", this.onKeyDown);
     this.el.root.removeEventListener("focusin", this.onFocusIn);
@@ -250,7 +252,7 @@ export class TimeGridController implements GestureHost {
 
   // ── Gestures ─────────────────────────────────────────────────────
 
-  planGesture(target: Element, x: number, y: number): GesturePlan | null {
+  planGesture(target: Element, x: number, y: number, event: PointerEvent): GesturePlan | null {
     if (target.closest("[data-no-drag]") !== null) return null;
     this.nudges.flush();
     const eventElement = target.closest<HTMLElement>("[data-event-key]");
@@ -259,8 +261,8 @@ export class TimeGridController implements GestureHost {
       const instance = model.instances.get(eventElement.dataset.eventKey ?? "");
       if (instance === undefined || isEventReadOnly(instance, model.calendars)) return null;
       const inLane = this.el.lane.contains(eventElement);
-      const edge = target.closest("[data-resize]")?.getAttribute("data-resize");
-      if (edge === "start" || edge === "end") return this.resizePlan(instance, edge, inLane);
+      const edge = pressedEdge(target, eventElement, x, y, event, instance.allDay === true);
+      if (edge !== null) return this.resizePlan(instance, edge, inLane);
       return this.movePlan(instance, inLane, x, y);
     }
     if (this.el.columns.contains(target)) return this.createTimedPlan(x, y);
@@ -459,6 +461,19 @@ export class TimeGridController implements GestureHost {
       cancel: () => this.hideGhosts(),
     };
   }
+
+  /** The gesture shield sits outside the scroll container: scroll the grid for it. */
+  private onWheel = (event: WheelEvent) => {
+    if (
+      !(event.target instanceof HTMLElement) ||
+      !event.target.hasAttribute("data-gesture-shield")
+    ) {
+      return;
+    }
+    const unit =
+      event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.el.scroll.clientHeight : 1;
+    this.el.scroll.scrollTop += event.deltaY * unit;
+  };
 
   // ── Clicks ───────────────────────────────────────────────────────
 

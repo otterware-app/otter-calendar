@@ -380,8 +380,33 @@ export function reuseList<T>(
   return previous;
 }
 
-export function sameSpanList(a: ReadonlyArray<SpanItem>, b: ReadonlyArray<SpanItem>): boolean {
-  return reuseList(a, b, sameSpan) === a;
+/**
+ * `previous` when both lists hold equal items; otherwise `next`, with every item equal to a
+ * previous one of the same key replaced by that previous object. Unchanged events keep their
+ * identity (and their memoized elements) when something else in the list changes.
+ */
+export function reuseItems<T extends { readonly key: string }>(
+  previous: ReadonlyArray<T> | undefined,
+  next: ReadonlyArray<T>,
+  same: (a: T, b: T) => boolean,
+): ReadonlyArray<T> {
+  if (previous === undefined) return next;
+  if (reuseList(previous, next, same) === previous) return previous;
+  if (previous.length === 0) return next;
+  const byKey = new Map<string, T>();
+  for (const item of previous) byKey.set(item.key, item);
+  return next.map((item) => {
+    const old = byKey.get(item.key);
+    return old !== undefined && same(old, item) ? old : item;
+  });
+}
+
+/** `reuseItems` for span lists (all-day lanes, month rows). */
+export function reuseSpans(
+  previous: ReadonlyArray<SpanItem> | undefined,
+  next: ReadonlyArray<SpanItem>,
+): ReadonlyArray<SpanItem> {
+  return reuseItems(previous, next, sameSpan);
 }
 
 /**
@@ -417,7 +442,7 @@ export class DayBucketCache {
       this.last.days.every((day, index) => day === days[index]);
     const timed = fresh.timed.map((bucket, index) => {
       const day = days[index]!;
-      const reused = reuseList(this.byDay.get(day), bucket, sameSegment);
+      const reused = reuseItems(this.byDay.get(day), bucket, sameSegment);
       this.byDay.delete(day);
       this.byDay.set(day, reused);
       if (unchanged && reused !== this.last!.timed[index]) unchanged = false;
@@ -429,7 +454,7 @@ export class DayBucketCache {
       this.byDay.delete(oldest);
     }
     const spans =
-      this.last !== null ? reuseList(this.last.spans, fresh.spans, sameSpan) : fresh.spans;
+      this.last !== null ? reuseItems(this.last.spans, fresh.spans, sameSpan) : fresh.spans;
     if (unchanged && spans === this.last!.spans) return this.last!;
     this.last = { days: fresh.days, timeZone, timed, spans };
     return this.last;

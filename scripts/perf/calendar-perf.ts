@@ -18,6 +18,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
+import * as NodeZlib from "node:zlib";
 
 import { chromium, type CDPSession, type Page } from "playwright-core";
 
@@ -199,21 +200,27 @@ async function main() {
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1000 },
       deviceScaleFactor: 1,
+      timezoneId: "Europe/Berlin",
     });
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     await cdp.send("Network.enable");
-    const frames: Array<{ at: number; bytes: number; snapshot: boolean }> = [];
+    // CDP reports frames decompressed; the server negotiates permessage-deflate, so each frame is
+    // also deflated here (per message, without context takeover: an upper bound on the wire).
+    const frames: Array<{ at: number; bytes: number; wire: number; snapshot: boolean }> = [];
     cdp.on("Network.webSocketFrameReceived", (event: { response: { payloadData: string } }) => {
       const payload = event.response.payloadData;
       frames.push({
         at: Date.now(),
         bytes: Buffer.byteLength(payload),
+        wire: NodeZlib.deflateRawSync(payload).length,
         snapshot: payload.includes('"snapshot"'),
       });
     });
     const wsBytesSince = (from: number) =>
       frames.filter((frame) => frame.at >= from).reduce((sum, frame) => sum + frame.bytes, 0);
+    const wireBytesSince = (from: number) =>
+      frames.filter((frame) => frame.at >= from).reduce((sum, frame) => sum + frame.wire, 0);
 
     // Pair, then wait until the demo accounts finished their first sync.
     const pairStart = Date.now();
@@ -238,6 +245,7 @@ async function main() {
     for (const view of ["week", "day", "custom", "month", "agenda"]) {
       const samples: Array<number> = [];
       const bytes: Array<number> = [];
+      const wire: Array<number> = [];
       for (let run = 0; run < 3; run += 1) {
         const from = Date.now();
         await page.goto(`${origin}/calendar?view=${view}&date=${today}`, { waitUntil: "commit" });
@@ -247,11 +255,13 @@ async function main() {
         await settled(page);
         samples.push(await page.evaluate(() => performance.now()));
         bytes.push(wsBytesSince(from));
+        wire.push(wireBytesSince(from));
       }
       firstRender[view] = {
         msFromNavigationStart: stats(samples),
         events: await page.locator("[data-event-key]").count(),
         wsBytes: stats(bytes),
+        wsWireBytes: stats(wire),
       };
     }
     results.firstRender = firstRender;
@@ -296,6 +306,7 @@ async function main() {
         return {
           perStepMs: stats(times),
           wsBytesPerStep: Math.round(wsBytesSince(from) / steps),
+          wsWireBytesPerStep: Math.round(wireBytesSince(from) / steps),
           ...recorded,
           result: undefined,
         };
@@ -361,11 +372,16 @@ async function main() {
         })),
         result: undefined,
       };
-      const handle = page.locator('[data-calendar-surface="timegrid"] [data-resize="end"]').first();
-      const handleBox = await handle.boundingBox();
-      if (handleBox) {
-        const hx = handleBox.x + handleBox.width / 2;
-        const hy = handleBox.y + handleBox.height / 2;
+      // Resizing starts on the bottom few pixels of a block (there are no handle elements).
+      const resizable = page
+        .locator(
+          '[data-calendar-surface="timegrid"] [data-event-key][data-timed]:not([data-readonly])',
+        )
+        .nth(3);
+      const resizeBox = await resizable.boundingBox();
+      if (resizeBox) {
+        const hx = resizeBox.x + resizeBox.width / 2;
+        const hy = resizeBox.y + resizeBox.height - 2;
         results.dragResize = {
           ...(await record(page, async () => {
             await page.mouse.move(hx, hy);
@@ -418,11 +434,13 @@ async function main() {
     };
 
     // 6. WebSocket payloads: size of week snapshots.
-    const snapshotFrames = frames.filter((frame) => frame.snapshot).map((frame) => frame.bytes);
+    const snapshotFrames = frames.filter((frame) => frame.snapshot);
     results.webSocket = {
       frames: frames.length,
       totalKb: round(frames.reduce((sum, frame) => sum + frame.bytes, 0) / 1024),
-      snapshotKb: stats(snapshotFrames.map((bytes) => bytes / 1024)),
+      totalWireKb: round(frames.reduce((sum, frame) => sum + frame.wire, 0) / 1024),
+      snapshotKb: stats(snapshotFrames.map((frame) => frame.bytes / 1024)),
+      snapshotWireKb: stats(snapshotFrames.map((frame) => frame.wire / 1024)),
     };
 
     const eventTotals = await page.evaluate(

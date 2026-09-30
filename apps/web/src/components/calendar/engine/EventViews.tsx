@@ -4,16 +4,21 @@ import {
   formatTimeRange,
   type HourFormat,
 } from "@t3tools/client-runtime/calendar/format";
-import type { TimedPlacement } from "@t3tools/client-runtime/calendar/layout";
 import type { CalendarEventInstance } from "@t3tools/contracts";
 import { memo, type CSSProperties } from "react";
 
-import { eventStateAttributes, flag } from "./eventAppearance";
+import { flag } from "./eventAppearance";
 
 /**
- * Event elements. Each is memoized on primitive props plus a layout object whose identity the
- * layout caches keep stable, so an update re-renders only the events that changed. Clicks,
- * keys and drags are handled by the surface through `data-event-key`, never per element.
+ * Event elements, kept to the fewest nodes that can carry them: the event element and its
+ * title span. The time comes from `data-time` through a pseudo-element, resize edges are
+ * pseudo-elements the gesture controller hit-tests by offset, and a timed block's layout
+ * (one line, two, or with location) comes from `data-size`, computed here from its height
+ * rather than with container queries.
+ *
+ * Props are primitives plus the instance (whose identity the bucket cache keeps while it is
+ * unchanged), so memo skips every event an update does not touch. Clicks, keys and drags are
+ * handled by the surface through `data-event-key`, never per element.
  */
 
 export interface EventVisualProps {
@@ -26,8 +31,25 @@ export interface EventVisualProps {
   readonly hourFormat: HourFormat;
 }
 
+/** How much a timed block shows: one small line, one line, title and time, or all. */
+export type BlockSize = "xs" | "sm" | "md" | "lg";
+
+/** The size class for a block drawn `heightPx` tall. */
+export function blockSize(heightPx: number): BlockSize {
+  if (heightPx < 21) return "xs";
+  if (heightPx < 35) return "sm";
+  if (heightPx < 50) return "md";
+  return "lg";
+}
+
 function title(instance: CalendarEventInstance): string {
   return instance.title || "(No title)";
+}
+
+function responseAttribute(instance: CalendarEventInstance): string | undefined {
+  return instance.response === undefined || instance.response === "accepted"
+    ? undefined
+    : instance.response;
 }
 
 function responseSuffix(instance: CalendarEventInstance): string {
@@ -45,7 +67,17 @@ function responseSuffix(instance: CalendarEventInstance): string {
 
 /** A timed event in a day column, placed by minutes (CSS scales with `--hour-height`). */
 export const TimedEventBlock = memo(function TimedEventBlock({
-  placement,
+  instance,
+  eventKey,
+  startMinutes,
+  endMinutes,
+  left,
+  width,
+  zIndex,
+  continuesBefore,
+  continuesAfter,
+  size,
+  narrow,
   dayLabel,
   color,
   readOnly,
@@ -54,45 +86,65 @@ export const TimedEventBlock = memo(function TimedEventBlock({
   past,
   timeZone,
   hourFormat,
-}: EventVisualProps & { readonly placement: TimedPlacement; readonly dayLabel: string }) {
-  const { segment, left, width, zIndex } = placement;
-  const { instance, startMinutes, endMinutes } = segment;
+}: EventVisualProps & {
+  readonly instance: CalendarEventInstance;
+  readonly eventKey: string;
+  readonly startMinutes: number;
+  readonly endMinutes: number;
+  /** Fractions of the column width. */
+  readonly left: number;
+  readonly width: number;
+  readonly zIndex: number;
+  readonly continuesBefore: boolean;
+  readonly continuesAfter: boolean;
+  readonly size: BlockSize;
+  /** Too narrow for more than the title. */
+  readonly narrow: boolean;
+  readonly dayLabel: string;
+}) {
   const time = formatTimeRange(instance.start, instance.end, timeZone, hourFormat);
-  const style = {
-    top: `calc(var(--hour-height) * ${startMinutes / 60})`,
-    height: `calc(var(--hour-height) * ${(endMinutes - startMinutes) / 60})`,
-    left: `${left * 100}%`,
-    width: `calc(${width * 100}% - 2px)`,
-    "--event-z": zIndex,
-    "--event-color": color,
-  } as CSSProperties;
+  const location = size === "lg" && !narrow ? instance.location : undefined;
   return (
     <div
       data-calendar-event=""
       data-timed=""
-      data-event-key={segment.key}
-      data-continues-before={flag(segment.continuesBefore)}
-      data-continues-after={flag(segment.continuesAfter)}
-      {...eventStateAttributes(instance, { past, selected, pending })}
+      data-event-key={eventKey}
+      data-size={size}
+      data-narrow={flag(narrow)}
+      data-time={time}
+      data-response={responseAttribute(instance)}
+      data-tentative={flag(instance.tentative === true)}
+      data-free={flag(instance.free === true)}
+      data-past={flag(past)}
+      data-selected={flag(selected)}
+      data-pending={flag(pending)}
+      data-readonly={flag(readOnly)}
+      data-continues-before={flag(continuesBefore)}
+      data-continues-after={flag(continuesAfter)}
       role="button"
       tabIndex={-1}
       aria-label={`${title(instance)}, ${dayLabel}, ${time}${instance.location ? `, ${instance.location}` : ""}${responseSuffix(instance)}`}
-      style={style}
+      style={
+        {
+          // A 1 px gap on every side separates neighbours without a ring or shadow.
+          top: `calc(var(--hour-height) * ${startMinutes / 60} + 1px)`,
+          height: `calc(var(--hour-height) * ${(endMinutes - startMinutes) / 60} - 2px)`,
+          left: `${left * 100}%`,
+          width: `calc(${width * 100}% - 2px)`,
+          zIndex,
+          "--event-color": color,
+        } as CSSProperties
+      }
     >
-      {!readOnly && !segment.continuesBefore ? <div data-resize="start" aria-hidden /> : null}
-      <div data-event-body="">
-        <span data-event-title="">{title(instance)}</span>
-        <span data-event-time="">{time}</span>
-        {instance.location ? <span data-event-location="">{instance.location}</span> : null}
-      </div>
-      {!readOnly && !segment.continuesAfter ? <div data-resize="end" aria-hidden /> : null}
+      <span data-event-title="">{title(instance)}</span>
+      {location ? <span data-event-location="">{location}</span> : null}
     </div>
   );
 });
 
 /**
- * Horizontal position of a span within a lane of `columns` days, and its level. `top` is the
- * lane's top padding; levels stack by `--cal-bar-height` plus `--cal-bar-gap`.
+ * Horizontal position of a span within a lane of `columns` days, and its level. Levels stack
+ * by `--cal-bar-height` plus `--cal-bar-gap`.
  */
 function spanStyle(item: SpanItem, level: number, columns: number, color: string): CSSProperties {
   const days = item.endIndex - item.startIndex + 1;
@@ -123,31 +175,31 @@ export const EventBar = memo(function EventBar({
 }) {
   const { instance } = item;
   const time =
-    item.kind === "allDay"
-      ? null
-      : item.continuesBefore
-        ? null
-        : formatTime(instance.start, timeZone, hourFormat);
+    item.kind === "allDay" || item.continuesBefore
+      ? undefined
+      : formatTime(instance.start, timeZone, hourFormat);
   return (
     <div
       data-calendar-event=""
       data-bar=""
       data-event-key={item.key}
+      data-all-day={flag(item.kind === "allDay")}
+      data-time={time}
+      data-response={responseAttribute(instance)}
+      data-tentative={flag(instance.tentative === true)}
+      data-free={flag(instance.free === true)}
+      data-past={flag(past)}
+      data-selected={flag(selected)}
+      data-pending={flag(pending)}
+      data-readonly={flag(readOnly)}
       data-continues-before={flag(item.continuesBefore)}
       data-continues-after={flag(item.continuesAfter)}
-      {...eventStateAttributes(instance, { past, selected, pending })}
       role="button"
       tabIndex={-1}
-      aria-label={`${title(instance)}, ${time === null ? "all day" : time}${responseSuffix(instance)}`}
+      aria-label={`${title(instance)}, ${time ?? "all day"}${responseSuffix(instance)}`}
       style={spanStyle(item, level, columns, color)}
     >
-      {time !== null ? <span data-event-time="">{time}</span> : null}
-      <span data-event-title="" className="min-w-0 truncate">
-        {title(instance)}
-      </span>
-      {!readOnly && item.kind === "allDay" && !item.continuesAfter ? (
-        <div data-resize="end" aria-hidden />
-      ) : null}
+      <span data-event-title="">{title(instance)}</span>
     </div>
   );
 });
@@ -158,6 +210,7 @@ export const EventChip = memo(function EventChip({
   level,
   columns,
   color,
+  readOnly,
   selected,
   pending,
   past,
@@ -175,17 +228,19 @@ export const EventChip = memo(function EventChip({
       data-calendar-event=""
       data-chip=""
       data-event-key={item.key}
-      {...eventStateAttributes(instance, { past, selected, pending })}
+      data-time={time}
+      data-response={responseAttribute(instance)}
+      data-tentative={flag(instance.tentative === true)}
+      data-past={flag(past)}
+      data-selected={flag(selected)}
+      data-pending={flag(pending)}
+      data-readonly={flag(readOnly)}
       role="button"
       tabIndex={-1}
       aria-label={`${title(instance)}, ${time}${responseSuffix(instance)}`}
       style={spanStyle(item, level, columns, color)}
     >
-      <span data-event-dot="" />
-      <span className="shrink-0 text-muted-foreground tabular-nums">{time}</span>
-      <span data-event-title="" className="min-w-0 truncate">
-        {title(instance)}
-      </span>
+      <span data-event-title="">{title(instance)}</span>
     </div>
   );
 });

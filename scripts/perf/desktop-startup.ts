@@ -24,7 +24,7 @@ const { values: args } = NodeUtil.parseArgs({
     app: { type: "string" },
     runs: { type: "string", default: "3" },
     demo: { type: "string", default: "standard" },
-    port: { type: "string", default: "9339" },
+    port: { type: "string", default: "9433" },
     screenshot: { type: "string" },
   },
 });
@@ -49,6 +49,8 @@ async function run(index: number) {
         ELECTRON_RUN_AS_NODE: undefined,
       },
       stdio: ["ignore", "pipe", "pipe"],
+      // Its own process group, so stopping it also stops Electron's helper processes.
+      detached: true,
     },
   );
   let log = "";
@@ -65,28 +67,30 @@ async function run(index: number) {
     }
     if (browser === undefined) throw new Error(`No CDP endpoint.\n${log.slice(-3000)}`);
     const cdpMs = performance.now() - started;
-    let page: Page | undefined;
-    for (let attempt = 0; attempt < 300 && page === undefined; attempt += 1) {
-      page = browser
-        .contexts()
-        .flatMap((context) => context.pages())
-        .find((candidate) => !candidate.url().startsWith("devtools"));
-      if (page === undefined) await sleep(50);
-    }
-    if (page === undefined) throw new Error("No window.");
+    // The app may open more than one window (and navigate them); poll every window each time.
     let shellMs: number | null = null;
     let calendarMs: number | null = null;
+    let page: Page | undefined;
     for (let attempt = 0; attempt < 1200 && calendarMs === null; attempt += 1) {
-      const state = await page
-        .evaluate(() => ({
-          shell: document.querySelector("[data-calendar-page]") !== null,
-          events: document.querySelectorAll("[data-event-key]").length,
-        }))
-        .catch(() => ({ shell: false, events: 0 }));
-      if (state.shell && shellMs === null) shellMs = performance.now() - started;
-      if (state.events > 0) calendarMs = performance.now() - started;
-      else await sleep(25);
+      for (const candidate of browser.contexts().flatMap((context) => context.pages())) {
+        if (candidate.url().startsWith("devtools")) continue;
+        const state = await Promise.race([
+          candidate.evaluate(() => ({
+            shell: document.querySelector("[data-calendar-page]") !== null,
+            events: document.querySelectorAll("[data-event-key]").length,
+          })),
+          sleep(1000).then(() => ({ shell: false, events: 0 })),
+        ]).catch(() => ({ shell: false, events: 0 }));
+        if (state.shell && shellMs === null) shellMs = performance.now() - started;
+        if (state.events > 0) {
+          calendarMs = performance.now() - started;
+          page = candidate;
+          break;
+        }
+      }
+      if (calendarMs === null) await sleep(25);
     }
+    if (page === undefined) throw new Error(`The calendar never rendered.\n${log.slice(-3000)}`);
     if (args.screenshot && index === 0) await page.screenshot({ path: args.screenshot });
     return {
       cdpMs: Math.round(cdpMs),
@@ -95,9 +99,16 @@ async function run(index: number) {
     };
   } finally {
     await browser?.close().catch(() => {});
-    child.kill("SIGTERM");
+    const stop = (signal: NodeJS.Signals) => {
+      try {
+        if (child.pid !== undefined) process.kill(-child.pid, signal);
+      } catch {
+        // Already gone.
+      }
+    };
+    stop("SIGTERM");
     await sleep(1500);
-    if (child.exitCode === null) child.kill("SIGKILL");
+    stop("SIGKILL");
     NodeFS.rmSync(home, { recursive: true, force: true });
   }
 }

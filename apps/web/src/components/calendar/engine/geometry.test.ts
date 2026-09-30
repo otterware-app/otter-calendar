@@ -13,6 +13,7 @@ import {
   moveIntoGrid,
   moveTimed,
   resizeAllDayEnd,
+  resizeEdge,
   resizeTimed,
   shiftDays,
   timedGhostSegments,
@@ -175,6 +176,32 @@ describe("gesture results", () => {
     });
     expect(resizeAllDayEnd(trip, day("2026-10-03")).end).toBe(day("2026-10-04") * 86_400_000);
     expect(resizeAllDayEnd(trip, day("2026-09-20")).end).toBe(day("2026-10-02") * 86_400_000);
+  });
+});
+
+describe("resize edges", () => {
+  const block = { top: 100, bottom: 160, left: 10, right: 110 };
+  const both = { vertical: true, start: true, end: true, coarse: false };
+
+  it("hits the top and bottom bands of timed blocks", () => {
+    expect(resizeEdge(block, 50, 103, both)).toBe("start");
+    expect(resizeEdge(block, 50, 157, both)).toBe("end");
+    expect(resizeEdge(block, 50, 130, both)).toBeNull();
+    // A continuing block has no start edge; touch bands are wider.
+    expect(resizeEdge(block, 50, 103, { ...both, start: false })).toBeNull();
+    expect(resizeEdge(block, 50, 149, { ...both, coarse: true })).toBe("end");
+    // A short block keeps its middle third for moving.
+    const short = { top: 100, bottom: 112, left: 10, right: 110 };
+    expect(resizeEdge(short, 50, 106, both)).toBeNull();
+    expect(resizeEdge(short, 50, 111, both)).toBe("end");
+  });
+
+  it("hits the end of bars", () => {
+    const bar = { top: 0, bottom: 20, left: 10, right: 210 };
+    const options = { vertical: false, start: false, end: true, coarse: false };
+    expect(resizeEdge(bar, 207, 10, options)).toBe("end");
+    expect(resizeEdge(bar, 150, 10, options)).toBeNull();
+    expect(resizeEdge(bar, 207, 10, { ...options, end: false })).toBeNull();
   });
 });
 

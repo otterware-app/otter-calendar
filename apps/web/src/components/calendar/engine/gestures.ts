@@ -7,8 +7,9 @@
  * - a mouse drag starts after a 4 px threshold; a touch drag after a 400 ms long-press on an
  *   event or empty space (moving first means the user is scrolling), immediately on resize
  *   handles;
- * - once active it captures the pointer on the surface root (stable across re-renders), and
- *   calls the plan's `update` at most once per animation frame with the latest pointer;
+ * - once active it shows the surface's shield (`data-gesture-shield`, a stable child of the
+ *   root that carries the cursor) and captures the pointer on it, then calls the plan's
+ *   `update` at most once per animation frame with the latest pointer;
  * - it auto-scrolls near the scroll container's edges, re-running `update` as content moves;
  * - pointerup drops; Escape, pointercancel, lost capture, blur and hiding the page cancel;
  * - the click after a real drag is swallowed.
@@ -16,6 +17,35 @@
  * No React state changes during a gesture: plans write to the DOM (ghosts, data attributes)
  * and call the view's callbacks once on drop.
  */
+
+import { resizeEdge } from "./geometry";
+
+/**
+ * The resize edge a press on an event element hits: a real `[data-resize]` handle, else the
+ * drawn edge bands (timed blocks: top and bottom; all-day bars: end). On touch only the
+ * selected event resizes, so a long-press anywhere else moves it.
+ */
+export function pressedEdge(
+  target: Element,
+  element: HTMLElement,
+  x: number,
+  y: number,
+  event: PointerEvent,
+  allDay: boolean,
+): "start" | "end" | null {
+  const handle = target.closest("[data-resize]")?.getAttribute("data-resize");
+  if (handle === "start" || handle === "end") return handle;
+  const coarse = event.pointerType !== "mouse";
+  if (coarse && !element.hasAttribute("data-selected")) return null;
+  const timed = element.hasAttribute("data-timed");
+  if (!timed && !(allDay && element.hasAttribute("data-bar"))) return null;
+  return resizeEdge(element.getBoundingClientRect(), x, y, {
+    vertical: timed,
+    start: timed && !element.hasAttribute("data-continues-before"),
+    end: !element.hasAttribute("data-continues-after"),
+    coarse,
+  });
+}
 
 export interface GestureModifiers {
   readonly alt: boolean;
@@ -242,12 +272,14 @@ export class PointerGestures {
       session.longPress = null;
     }
     session.active = true;
+    // Show the shield (it carries the gesture cursor), then capture on it: the cursor follows
+    // the capturing element, and no event element changes style.
+    this.root.dataset.gesture = session.plan.cursor;
     try {
-      this.root.setPointerCapture(session.pointerId);
+      this.captureTarget().setPointerCapture(session.pointerId);
     } catch {
       // The pointer is already gone; the next event cancels.
     }
-    this.root.dataset.gesture = session.plan.cursor;
     if (session.touch) navigator.vibrate?.(8);
     session.plan.activate();
     this.lastFrameTime = 0;
@@ -326,8 +358,14 @@ export class PointerGestures {
     view.removeEventListener("touchmove", this.onTouchMove, { capture: true });
     this.root.removeEventListener("lostpointercapture", this.onLostCapture);
     this.root.removeEventListener("scroll", this.onScroll, true);
-    if (session?.active === true && this.root.hasPointerCapture?.(session.pointerId) === true) {
-      this.root.releasePointerCapture(session.pointerId);
+    const target = this.captureTarget();
+    if (session?.active === true && target.hasPointerCapture?.(session.pointerId) === true) {
+      target.releasePointerCapture(session.pointerId);
     }
+  }
+
+  /** The surface's shield when it has one (a direct child), else the root itself. */
+  private captureTarget(): HTMLElement {
+    return this.root.querySelector<HTMLElement>(":scope > [data-gesture-shield]") ?? this.root;
   }
 }

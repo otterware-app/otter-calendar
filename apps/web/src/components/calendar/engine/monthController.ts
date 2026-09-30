@@ -19,7 +19,7 @@ import {
   shiftDays,
   visibleSpan,
 } from "./geometry";
-import { type GesturePlan, type GestureHost, PointerGestures } from "./gestures";
+import { type GesturePlan, type GestureHost, PointerGestures, pressedEdge } from "./gestures";
 import {
   Announcer,
   NudgeBatch,
@@ -168,7 +168,7 @@ export class MonthController implements GestureHost {
 
   // ── Gestures ─────────────────────────────────────────────────────
 
-  planGesture(target: Element, x: number, y: number): GesturePlan | null {
+  planGesture(target: Element, x: number, y: number, event: PointerEvent): GesturePlan | null {
     if (target.closest("[data-no-drag]") !== null) return null;
     this.nudges.flush();
     const eventElement = target.closest<HTMLElement>("[data-event-key]");
@@ -176,7 +176,10 @@ export class MonthController implements GestureHost {
       const model = this.model();
       const instance = model.instances.get(eventElement.dataset.eventKey ?? "");
       if (instance === undefined || isEventReadOnly(instance, model.calendars)) return null;
-      if (target.closest("[data-resize]") !== null && instance.allDay === true) {
+      if (
+        instance.allDay === true &&
+        pressedEdge(target, eventElement, x, y, event, true) === "end"
+      ) {
         return this.resizePlan(instance);
       }
       return this.movePlan(instance, x, y);

@@ -6,6 +6,8 @@ import {
   bucketInstances,
   customViewDays,
   monthViewWeeks,
+  reuseItems,
+  sameInstance,
   sliceSpans,
   stepAnchor,
   timeGridDays,
@@ -251,5 +253,24 @@ describe("DayBucketCache", () => {
     const back = cache.bucket([monday, moved], week, BERLIN);
     expect(back.timed[0]).toBe(first.timed[0]);
     expect(back.timed[1]).toBe(second.timed[1]);
+  });
+});
+
+describe("reuseItems", () => {
+  it("keeps unchanged items of a changed list", () => {
+    const a = allDay("a", "2026-10-01", "2026-10-02");
+    const b = allDay("b", "2026-10-02", "2026-10-03");
+    const days = weekViewDays(day("2026-09-30"), 1, true);
+    const first = bucketInstances([a, b], days, BERLIN).spans;
+    const second = bucketInstances([{ ...a }, { ...b, title: "changed" }], days, BERLIN).spans;
+    const reused = reuseItems(
+      first,
+      second,
+      (x, y) => x.key === y.key && sameInstance(x.instance, y.instance),
+    );
+    expect(reused).not.toBe(first);
+    expect(reused[0]).toBe(first[0]);
+    expect(reused[1]).toBe(second[1]);
+    expect(reuseItems([], [], () => true)).toHaveLength(0);
   });
 });
