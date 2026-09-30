@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @effect-diagnostics nodeBuiltinImport:off globalDate:off globalTimers:off globalConsole:off - A standalone benchmark driver, not app code.
+/// <reference lib="dom" />
 /**
  * Calendar performance run: starts a production server (built web app) on an isolated home seeded
  * with the massive demo dataset, pairs a headless Chromium, and measures what users feel:
@@ -13,14 +14,14 @@
  *
  * Methodology notes live in docs/performance.md.
  */
-import { spawn, type ChildProcess } from "node:child_process";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { parseArgs } from "node:util";
+import * as NodeChildProcess from "node:child_process";
+import * as NodeFS from "node:fs";
+import * as NodePath from "node:path";
+import * as NodeUtil from "node:util";
 
 import { chromium, type CDPSession, type Page } from "playwright-core";
 
-const { values: args } = parseArgs({
+const { values: args } = NodeUtil.parseArgs({
   options: {
     demo: { type: "string", default: "massive:7" },
     port: { type: "string", default: "13990" },
@@ -31,8 +32,8 @@ const { values: args } = parseArgs({
   },
 });
 
-const repoRoot = path.resolve(import.meta.dirname, "../..");
-const baseDir = path.resolve(args["base-dir"]);
+const repoRoot = NodePath.resolve(import.meta.dirname, "../..");
+const baseDir = NodePath.resolve(args["base-dir"]);
 const port = Number(args.port);
 const origin = `http://127.0.0.1:${port}`;
 
@@ -57,20 +58,20 @@ const round = (value: number) => Math.round(value * 10) / 10;
 // ── Server ───────────────────────────────────────────────────────────
 
 async function startServer(): Promise<{
-  child: ChildProcess;
+  child: NodeChildProcess.ChildProcess;
   pairingUrl: string;
   log: () => string;
 }> {
-  if (!fs.existsSync(path.join(repoRoot, "apps/web/dist/index.html"))) {
+  if (!NodeFS.existsSync(NodePath.join(repoRoot, "apps/web/dist/index.html"))) {
     throw new Error("Build the web app first: cd apps/web && vp run build");
   }
-  if (!args["keep-home"]) fs.rmSync(baseDir, { recursive: true, force: true });
-  fs.mkdirSync(baseDir, { recursive: true });
+  if (!args["keep-home"]) NodeFS.rmSync(baseDir, { recursive: true, force: true });
+  NodeFS.mkdirSync(baseDir, { recursive: true });
   let output = "";
-  const child = spawn(
+  const child = NodeChildProcess.spawn(
     process.execPath,
     [
-      path.join(repoRoot, "apps/server/src/bin.ts"),
+      NodePath.join(repoRoot, "apps/server/src/bin.ts"),
       "--base-dir",
       baseDir,
       "--port",
@@ -432,9 +433,9 @@ async function main() {
     await browser.close().catch(() => {});
     server.child.kill("SIGTERM");
   }
-  const out = path.resolve(repoRoot, args.out);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`);
+  const out = NodePath.resolve(repoRoot, args.out);
+  NodeFS.mkdirSync(NodePath.dirname(out), { recursive: true });
+  NodeFS.writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`);
   console.log(JSON.stringify(results, null, 2));
 }
 

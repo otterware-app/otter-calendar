@@ -167,17 +167,6 @@ function AgendaListAt(props: AgendaListProps) {
     [selectedKey, pendingKeys, now, today],
   );
 
-  const latest = useRef(props);
-  const shownRef = useRef(shown);
-  const rovingRef = useRef<string | null>(null);
-  useLayoutEffect(() => {
-    latest.current = props;
-    shownRef.current = shown;
-    loadEarlierRef.current = loadEarlier;
-    if (rootRef.current !== null)
-      syncRovingFocus(rootRef.current, rovingRef.current ?? selectedKey);
-  });
-
   // The list starts at the anchor day, so it opens there without scrolling to an index whose
   // offset would come from estimated row heights. Earlier days load once the user scrolls up
   // (at the top, a wheel or swipe upward), and the list keeps its position when they arrive.
@@ -190,6 +179,17 @@ function AgendaListAt(props: AgendaListProps) {
     );
   }, [anchorDay]);
   const loadEarlierRef = useRef(loadEarlier);
+
+  const latest = useRef(props);
+  const shownRef = useRef(shown);
+  const rovingRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    latest.current = props;
+    shownRef.current = shown;
+    loadEarlierRef.current = loadEarlier;
+    if (rootRef.current !== null)
+      syncRovingFocus(rootRef.current, rovingRef.current ?? selectedKey);
+  });
 
   // Ask for the days the list covers whenever it grows.
   useEffect(() => {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @effect-diagnostics nodeBuiltinImport:off globalDate:off globalTimers:off globalConsole:off - A standalone benchmark driver, not app code.
+/// <reference lib="dom" />
 /**
  * Cold start of the packaged Linux desktop app: time from spawning the AppImage (fresh HOME, so no
  * caches) to the first painted calendar event, measured over CDP. The bundled server seeds the
@@ -10,15 +11,15 @@
  *   xvfb-run -a -s "-screen 0 1600x1000x24" node scripts/perf/desktop-startup.ts \
  *     --app release/Otter-Calendar-<version>-x86_64.AppImage [--runs 3] [--screenshot out.png]
  */
-import { spawn } from "node:child_process";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-import { parseArgs } from "node:util";
+import * as NodeChildProcess from "node:child_process";
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+import * as NodeUtil from "node:util";
 
 import { chromium, type Browser, type Page } from "playwright-core";
 
-const { values: args } = parseArgs({
+const { values: args } = NodeUtil.parseArgs({
   options: {
     app: { type: "string" },
     runs: { type: "string", default: "3" },
@@ -29,15 +30,15 @@ const { values: args } = parseArgs({
 });
 
 if (!args.app) throw new Error("Pass --app <path to the AppImage>");
-const appImage = path.resolve(args.app);
+const appImage = NodePath.resolve(args.app);
 const debugPort = Number(args.port);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function run(index: number) {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "otter-calendar-desktop-"));
+  const home = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "otter-calendar-desktop-"));
   const started = performance.now();
-  const child = spawn(
+  const child = NodeChildProcess.spawn(
     appImage,
     ["--appimage-extract-and-run", `--remote-debugging-port=${debugPort}`, "--no-sandbox"],
     {
@@ -97,12 +98,12 @@ async function run(index: number) {
     child.kill("SIGTERM");
     await sleep(1500);
     if (child.exitCode === null) child.kill("SIGKILL");
-    fs.rmSync(home, { recursive: true, force: true });
+    NodeFS.rmSync(home, { recursive: true, force: true });
   }
 }
 
 const results = [];
 for (let index = 0; index < Number(args.runs); index += 1) results.push(await run(index));
 console.log(
-  JSON.stringify({ app: path.basename(appImage), demo: args.demo, runs: results }, null, 2),
+  JSON.stringify({ app: NodePath.basename(appImage), demo: args.demo, runs: results }, null, 2),
 );

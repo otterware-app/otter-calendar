@@ -115,8 +115,8 @@ export function isValidTimeZone(zone: string): boolean {
   let valid = validZones.get(zone);
   if (valid === undefined) {
     try {
-      new Intl.DateTimeFormat("en-US", { timeZone: zone });
-      valid = true;
+      valid =
+        new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().timeZone !== "";
     } catch {
       valid = false;
     }
