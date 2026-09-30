@@ -85,6 +85,16 @@ port.
 
 None of this is needed for local development. Each step lists where its values go.
 
+- **Google Calendar (the app's data)**: a Google Cloud project with the Google Calendar API
+  enabled, an OAuth consent screen (scopes `calendar.events`, `calendar.calendarlist.readonly`,
+  `openid`, `email`, `profile`; publish it "In production" — clients left in "Testing" get refresh
+  tokens that expire after 7 days), and an OAuth client of type **Desktop app** (loopback
+  redirects on any port are allowed for that type, so no redirect URI is registered). Its id and
+  secret go into the root `.env` as `T3CODE_GOOGLE_CLIENT_ID`/`T3CODE_GOOGLE_CLIENT_SECRET` to be
+  baked into local builds; for CI builds set the repository variable `GOOGLE_CLIENT_ID` and the
+  secret `GOOGLE_CLIENT_SECRET` (read by `release.yml`'s bundle job). A server's environment or
+  **Settings → Calendar → Google OAuth client** override them at runtime. Without
+  one, the app runs with demo data only. Details: [calendar engine](docs/internals/calendar-engine.md#sync-and-google-sign-in).
 - **Clerk (accounts)**: an application with a JWT template (audience = the relay's
   `CLERK_JWT_AUDIENCE`), a public CLI OAuth application with PKCE (redirect
   `http://127.0.0.1:34338/callback`, device grant enabled for SSH hosts), the desktop redirects
