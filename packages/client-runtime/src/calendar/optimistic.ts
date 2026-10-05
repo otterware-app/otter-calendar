@@ -362,6 +362,8 @@ export interface CalendarHistory {
   readonly subscribe: (listener: () => void) => () => void;
   /** Records a finished change; a new change clears the redo stack. */
   readonly record: (entry: CalendarHistoryEntry) => void;
+  /** Undo waits for these mutations to finish and record their undo steps. */
+  readonly trackMutation: <A>(mutation: () => Promise<A>) => Promise<A>;
   readonly undo: (apply: ApplyCalendarSteps) => Promise<CalendarHistoryOutcome>;
   readonly redo: (apply: ApplyCalendarSteps) => Promise<CalendarHistoryOutcome>;
   readonly clear: () => void;
@@ -372,6 +374,7 @@ const EMPTY_HISTORY: CalendarHistoryState = { undo: [], redo: [] };
 
 export function createCalendarHistory(): CalendarHistory {
   let state = EMPTY_HISTORY;
+  const pendingMutations = new Set<Promise<void>>();
   const listeners = new Set<() => void>();
   const set = (next: CalendarHistoryState) => {
     state = next;
@@ -390,6 +393,9 @@ export function createCalendarHistory(): CalendarHistory {
     from: keyof CalendarHistoryState,
     apply: ApplyCalendarSteps,
   ): Promise<CalendarHistoryOutcome> => {
+    // An optimistic delete hides its event before Google answers. Selecting history now would
+    // undo the previous edit; a failed edit could then be pushed above the completed delete.
+    while (pendingMutations.size > 0) await Promise.all(pendingMutations);
     const to = from === "undo" ? "redo" : "undo";
     const entry = state[from].at(-1);
     if (entry === undefined) return { _tag: "empty" };
@@ -420,6 +426,19 @@ export function createCalendarHistory(): CalendarHistory {
     record: (entry) => {
       if (entry.steps.length === 0) return;
       set({ undo: push(state.undo, entry), redo: [] });
+    },
+    trackMutation: async (mutation) => {
+      let settle = () => {};
+      const pending = new Promise<void>((resolve) => {
+        settle = resolve;
+      });
+      pendingMutations.add(pending);
+      try {
+        return await mutation();
+      } finally {
+        pendingMutations.delete(pending);
+        settle();
+      }
     },
     undo: (apply) => run("undo", apply),
     redo: (apply) => run("redo", apply),

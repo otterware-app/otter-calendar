@@ -3,6 +3,9 @@ import * as Effect from "effect/Effect";
 import * as HttpClient from "effect/unstable/http/HttpClient";
 import * as HttpClientError from "effect/unstable/http/HttpClientError";
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse";
+import { CalendarId, type CalendarChangeStep } from "@t3tools/contracts";
+
+import { createCalendarHistory } from "../../../../../packages/client-runtime/src/calendar/optimistic.ts";
 
 import {
   EVENTS_PAGE_FIELDS,
@@ -21,7 +24,9 @@ interface Seen {
 }
 
 /** A client against scripted answers; `"network"` fails the request before any response. */
-const harness = (reply: (seen: Seen, index: number) => Response | "network") => {
+const harness = (
+  reply: (seen: Seen, index: number) => Response | "network" | Promise<Response>,
+) => {
   const requests: Seen[] = [];
   const delays: number[] = [];
   const rejected: string[] = [];
@@ -42,7 +47,9 @@ const harness = (reply: (seen: Seen, index: number) => Response | "network") => 
               reason: new HttpClientError.TransportError({ request }),
             }),
           )
-        : Effect.succeed(HttpClientResponse.fromWeb(request, answer));
+        : (answer instanceof Response ? Effect.succeed(answer) : Effect.promise(() => answer)).pipe(
+            Effect.map((response) => HttpClientResponse.fromWeb(request, response)),
+          );
     }),
   );
   const client = makeGoogleCalendarClient({
@@ -73,6 +80,76 @@ const googleError = (status: number, reason: string, headers: Record<string, str
   );
 const event: RemoteEvent = { id: "evt1", status: "confirmed", summary: "Standup" };
 const holidays = "en.german#holiday@group.v.calendar.google.com";
+
+it.effect(
+  "undo waits for Google's pending delete and restores it instead of undoing an older edit",
+  () =>
+    Effect.gen(function* () {
+      const deletionStarted = Promise.withResolvers<void>();
+      const deleteResponse = Promise.withResolvers<Response>();
+      const deletionCompleted = Promise.withResolvers<void>();
+      const restoreRequested = Promise.withResolvers<ReadonlyArray<CalendarChangeStep>>();
+      const restoreCompleted = Promise.withResolvers<{
+        readonly ok: true;
+        readonly undo: CalendarChangeStep[];
+      }>();
+      const calendarId = CalendarId.make("calendar");
+      const history = createCalendarHistory();
+      history.record({
+        label: "Edited event",
+        steps: [{ _tag: "update", input: { calendarId, eventId: event.id, title: "Old" } }],
+      });
+      const { client, requests } = harness((seen) => {
+        if (seen.method === "DELETE") {
+          deletionStarted.resolve();
+          return deleteResponse.promise;
+        }
+        return json(event);
+      });
+      const mutation = history.trackMutation(async () => {
+        await deletionCompleted.promise;
+        history.record({
+          label: "Deleted event",
+          steps: [{ _tag: "restore", input: { calendarId, eventId: event.id } }],
+        });
+      });
+      yield* client.deleteEvent(calendarId, event.id, {}).pipe(
+        Effect.tap(() => Effect.sync(() => deletionCompleted.resolve())),
+        Effect.forkScoped,
+      );
+      yield* Effect.promise(() => deletionStarted.promise);
+      let sentSteps: ReadonlyArray<CalendarChangeStep> | undefined;
+      const undo = history.undo((steps) => {
+        sentSteps = steps;
+        restoreRequested.resolve(steps);
+        return restoreCompleted.promise;
+      });
+      expect(sentSteps).toBeUndefined();
+      deleteResponse.resolve(new Response(null, { status: 204 }));
+      yield* Effect.promise(() => mutation);
+      const steps = yield* Effect.promise(() => restoreRequested.promise);
+      expect(steps).toEqual([{ _tag: "restore", input: { calendarId, eventId: event.id } }]);
+      yield* client.patchEvent(
+        calendarId,
+        event.id,
+        { status: "confirmed" },
+        {
+          current: { ...event, status: "cancelled" },
+        },
+      );
+      restoreCompleted.resolve({
+        ok: true,
+        undo: [{ _tag: "delete", input: { calendarId, eventId: event.id } }],
+      });
+      expect((yield* Effect.promise(() => undo))._tag).toBe("done");
+      expect(requests.map((request) => [request.method, request.body])).toEqual([
+        ["DELETE", ""],
+        ["PATCH", '{"status":"confirmed"}'],
+      ]);
+      expect(history.getState().undo.map((entry) => entry.label)).toEqual(["Edited event"]);
+      expect(history.getState().redo.map((entry) => entry.label)).toEqual(["Deleted event"]);
+    }),
+);
 
 describe("listEvents", () => {
   it.effect("asks for masters and exceptions with a fields mask, and pages to the sync token", () =>
