@@ -711,8 +711,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
       const mac = config.mac as Record<string, unknown>;
       assert.equal(mac.identity, "-");
-      assert.equal(mac.entitlements, "apps/desktop/resources/entitlements.adhoc.mac.plist");
+      const path = yield* Path.Path;
+      const fs = yield* FileSystem.FileSystem;
+      assert.isTrue(path.isAbsolute(String(mac.entitlements)));
+      assert.isTrue(yield* fs.exists(String(mac.entitlements)));
       assert.equal(mac.entitlementsInherit, mac.entitlements);
+      assert.equal(mac.timestamp, "none");
       assert.equal(mac.notarize, false);
       assert.isUndefined(mac.provisioningProfile);
     }).pipe(Effect.provide(emptyConfig)),

@@ -1517,8 +1517,15 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
             // Repackaging Electron invalidates its original signature. Local
             // builds still need an ad-hoc signature and JIT entitlements.
             identity: "-",
-            entitlements: "apps/desktop/resources/entitlements.adhoc.mac.plist",
-            entitlementsInherit: "apps/desktop/resources/entitlements.adhoc.mac.plist",
+            entitlements: path.join(
+              repoRoot,
+              "apps/desktop/resources/entitlements.adhoc.mac.plist",
+            ),
+            entitlementsInherit: path.join(
+              repoRoot,
+              "apps/desktop/resources/entitlements.adhoc.mac.plist",
+            ),
+            timestamp: "none",
             notarize: false,
           }),
       ...(macPasskeySigning
