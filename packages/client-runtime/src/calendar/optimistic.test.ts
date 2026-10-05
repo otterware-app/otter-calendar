@@ -229,4 +229,22 @@ describe("calendar history", () => {
     expect(thrown._tag).toBe("failed");
     expect(history.getState().undo).toHaveLength(1);
   });
+
+  it("undo still applies the previous change after a pending mutation rejects", async () => {
+    const history = createCalendarHistory();
+    history.record({ label: "Renamed", steps: [moveBack] });
+    const pending = Promise.withResolvers<void>();
+    const mutation = history.trackMutation(() => pending.promise);
+    const rejected = expect(mutation).rejects.toThrow("offline");
+    const applied: Array<ReadonlyArray<CalendarChangeStep>> = [];
+    const undo = history.undo(async (steps) => {
+      applied.push(steps);
+      return { ok: true, undo: [moveAgain] };
+    });
+    expect(applied).toEqual([]);
+    pending.reject(new Error("offline"));
+    await rejected;
+    expect((await undo)._tag).toBe("done");
+    expect(applied).toEqual([[moveBack]]);
+  });
 });

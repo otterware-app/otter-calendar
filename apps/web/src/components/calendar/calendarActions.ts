@@ -144,21 +144,21 @@ async function mutate<I>(options: {
   readonly label: string;
   readonly failure: string;
 }): Promise<CalendarMutationResult | null> {
-  const result = await runOptimistic(
-    options.environmentId,
-    options.command,
-    options.input,
-    options.optimistic,
-  );
-  if (result._tag === "Success") {
-    calendarHistory(options.environmentId).record({
-      label: options.label,
-      steps: result.value.undo,
-    });
-    return result.value;
-  }
-  toastFailure(options.failure, result);
-  return null;
+  const history = calendarHistory(options.environmentId);
+  return history.trackMutation(async () => {
+    const result = await runOptimistic(
+      options.environmentId,
+      options.command,
+      options.input,
+      options.optimistic,
+    );
+    if (result._tag === "Success") {
+      history.record({ label: options.label, steps: result.value.undo });
+      return result.value;
+    }
+    toastFailure(options.failure, result);
+    return null;
+  });
 }
 
 // ── Events ───────────────────────────────────────────────────────────
