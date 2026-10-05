@@ -56,7 +56,7 @@ version, and the server downloads that version's archive from the release.
 Repository variables and secrets, grouped by what they enable. Anything optional is skipped when
 it is unset.
 
-**Signing and notarization** (optional; without them the app is unsigned):
+**Developer ID signing and notarization** (optional; without them the app is signed ad hoc for local testing):
 
 | Name                         | Kind     | Value                                                                    |
 | ---------------------------- | -------- | ------------------------------------------------------------------------ |

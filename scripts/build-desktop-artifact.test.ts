@@ -697,6 +697,27 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     assert.notInclude(error.message, secret);
   });
 
+  it.effect("signs local macOS builds ad hoc without enabling notarization or passkeys", () =>
+    Effect.gen(function* () {
+      const config = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      const mac = config.mac as Record<string, unknown>;
+      assert.equal(mac.identity, "-");
+      assert.equal(mac.entitlements, "apps/desktop/resources/entitlements.adhoc.mac.plist");
+      assert.equal(mac.entitlementsInherit, mac.entitlements);
+      assert.equal(mac.notarize, false);
+      assert.isUndefined(mac.provisioningProfile);
+    }).pipe(Effect.provide(emptyConfig)),
+  );
+
   it.effect("adds passkey entitlements and the signing hook to signed macOS builds", () =>
     Effect.gen(function* () {
       const config = yield* createBuildConfig("mac", "dmg", "1.2.3", true, false, undefined, {
@@ -708,6 +729,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
       assert.equal(mac.provisioningProfile, "/tmp/app.provisionprofile");
       assert.match(String(mac.sign), /[\\/]scripts[\\/]sign-macos\.ts$/);
+      assert.isUndefined(mac.identity);
+      assert.isUndefined(mac.notarize);
     }).pipe(Effect.provide(emptyConfig)),
   );
 

@@ -1511,7 +1511,16 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       icon: "icon.icns",
       category: "public.app-category.productivity",
       protocols,
-      ...(signed ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") } : {}),
+      ...(signed
+        ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") }
+        : {
+            // Repackaging Electron invalidates its original signature. Local
+            // builds still need an ad-hoc signature and JIT entitlements.
+            identity: "-",
+            entitlements: "apps/desktop/resources/entitlements.adhoc.mac.plist",
+            entitlementsInherit: "apps/desktop/resources/entitlements.adhoc.mac.plist",
+            notarize: false,
+          }),
       ...(macPasskeySigning
         ? {
             entitlements: macPasskeySigning.entitlementsPath,

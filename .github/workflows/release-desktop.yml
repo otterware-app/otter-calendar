@@ -175,6 +175,9 @@ jobs:
 
           vp run dist:desktop:artifact "${args[@]}"
 
+      - name: Verify packaged desktop signatures
+        run: bash .github/scripts/verify-macos-desktop.sh release/*.dmg release/*.zip
+
       # The single-executable is built with a Node that supports --build-sea
       # (25.7+); the repo itself stays on the engines.node version. It injects
       # into the runner's own Node, so the binary targets this runner and can be
