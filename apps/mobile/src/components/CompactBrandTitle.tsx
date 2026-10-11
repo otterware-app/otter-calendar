@@ -1,17 +1,19 @@
 import { BRAND } from "@t3tools/shared/brand";
 import Constants from "expo-constants";
 import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
-import { Platform, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
+import { useResolveClassNames } from "uniwind";
 
 import { AppText as Text } from "./AppText";
+import { BrandSymbol } from "./BrandSymbol";
 import { resolveMobileStageLabel } from "../lib/mobileBranding";
 import { useAndroidControlSizing } from "./useAndroidControlSizing";
 
 const [BRAND_LEAD, ...BRAND_REST] = BRAND.displayName.split(" ");
 
 /**
- * Compact brand lockup sized for native navigation bars: the first word of the app's name,
- * the rest muted, then the build stage.
+ * Compact brand lockup sized for native navigation bars: the app's symbol, the first word of
+ * its name, the rest muted, then the build stage.
  */
 export function CompactBrandTitle(
   props: {
@@ -20,6 +22,7 @@ export function CompactBrandTitle(
 ) {
   const stageLabel = resolveMobileStageLabel(Constants.expoConfig?.extra?.appVariant);
   const { scale } = useAndroidControlSizing();
+  const symbolColor = StyleSheet.flatten(useResolveClassNames("text-foreground")).color;
 
   return (
     <View
@@ -30,6 +33,7 @@ export function CompactBrandTitle(
       className="flex-row items-center gap-1.5"
       style={Platform.OS === "android" ? { gap: 5.25 * scale } : undefined}
     >
+      <BrandSymbol size={18 * scale} color={symbolColor} />
       <Text
         allowFontScaling={props.allowFontScaling}
         className="font-t3-medium text-foreground"

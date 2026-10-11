@@ -61,7 +61,9 @@ port.
    ```
 
    Add `--connect-name` to rename Otter Connect and `--dry-run` to see the changes first.
-   Replace the icons in `assets/` and run `node scripts/export-brand-icons.ts`.
+   Replace the icons in `assets/` (one Icon Composer project per channel, see
+   [assets/README.md](assets/README.md)) and the in-app symbol in
+   `packages/shared/src/brandSymbol.ts`, then run `node scripts/export-brand-icons.ts`.
 
 3. `vp i` (or `pnpm install`), then `vp run dev`.
 
