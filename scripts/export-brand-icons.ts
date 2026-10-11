@@ -752,6 +752,8 @@ export const exportBrandIcons = Effect.fn("exportBrandIcons")(function* (checkOn
   }
 
   for (const override of DEVELOPMENT_PUBLIC_ICON_OVERRIDES) {
+    // The SVG favicons are kept by hand next to the projects; Icon Composer doesn't export them.
+    if (override.sourceRelativePath.endsWith(".svg")) continue;
     const sourceContents = generated.get(override.sourceRelativePath);
     if (sourceContents === undefined) {
       return yield* Effect.die(

@@ -39,10 +39,10 @@ const DEVELOPMENT_ASSETS = {
   appIcon: fromRepoRoot(BRAND_ASSET_PATHS.developmentIosIconPng),
   iosIcon: fromRepoRoot(BRAND_ASSET_PATHS.developmentIconComposerProject),
   splashIcon: fromRepoRoot(BRAND_ASSET_PATHS.developmentIosIconPng),
-  androidAdaptiveForeground: "./assets/otter/android-icon-foreground.png",
-  androidAdaptiveBackgroundColor: "#000000",
-  androidAdaptiveBackgroundImage: undefined,
-  androidSplashIcon: "./assets/otter/android-splash-icon.png",
+  androidAdaptiveForeground: "./assets/otter/android-icon-foreground-dev.png",
+  androidAdaptiveBackgroundColor: "#1b4fd1",
+  androidAdaptiveBackgroundImage: "./assets/otter/android-icon-background-dev.png",
+  androidSplashIcon: "./assets/otter/android-splash-icon-dev.png",
   androidMonochromeIcon: "./assets/otter/android-icon-mark.png",
 } as const;
 
@@ -50,10 +50,10 @@ const PREVIEW_ASSETS = {
   appIcon: fromRepoRoot(BRAND_ASSET_PATHS.nightlyIosIconPng),
   iosIcon: fromRepoRoot(BRAND_ASSET_PATHS.nightlyIconComposerProject),
   splashIcon: fromRepoRoot(BRAND_ASSET_PATHS.nightlyIosIconPng),
-  androidAdaptiveForeground: "./assets/otter/android-icon-foreground.png",
-  androidAdaptiveBackgroundColor: "#000000",
-  androidAdaptiveBackgroundImage: undefined,
-  androidSplashIcon: "./assets/otter/android-splash-icon.png",
+  androidAdaptiveForeground: "./assets/otter/android-icon-foreground-nightly.png",
+  androidAdaptiveBackgroundColor: "#2a2669",
+  androidAdaptiveBackgroundImage: "./assets/otter/android-icon-background-nightly.png",
+  androidSplashIcon: "./assets/otter/android-splash-icon-nightly.png",
   androidMonochromeIcon: "./assets/otter/android-icon-mark.png",
 } as const;
 
@@ -62,7 +62,7 @@ const RELEASE_ASSETS = {
   iosIcon: fromRepoRoot(BRAND_ASSET_PATHS.productionIconComposerProject),
   splashIcon: fromRepoRoot(BRAND_ASSET_PATHS.productionIosIconPng),
   androidAdaptiveForeground: "./assets/otter/android-icon-foreground.png",
-  androidAdaptiveBackgroundColor: "#000000",
+  androidAdaptiveBackgroundColor: "#f8f5ec",
   androidAdaptiveBackgroundImage: undefined,
   androidSplashIcon: "./assets/otter/android-splash-icon.png",
   androidMonochromeIcon: "./assets/otter/android-icon-mark.png",

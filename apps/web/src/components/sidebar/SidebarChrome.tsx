@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
+import { BrandSymbol } from "../BrandSymbol";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
@@ -66,11 +67,12 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
     <Link
       aria-label={`Go to ${BRAND.displayName} home`}
       className={cn(
-        "relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-7 w-fit min-w-0 shrink-0 items-center overflow-hidden rounded-md outline-hidden ring-ring focus-visible:ring-2 md:flex",
+        "relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-7 w-fit min-w-0 shrink-0 items-center gap-1.5 overflow-hidden rounded-md outline-hidden ring-ring focus-visible:ring-2 md:flex",
         onBackdrop ? "text-white" : "text-foreground",
       )}
       to="/"
     >
+      <BrandSymbol className="size-4 shrink-0" />
       {/* Center the visible capitals, without the font's ascender/descender space. The first
           word of the name reads strong, the rest muted ("Otter Scaffold"). */}
       <span className="inline-flex min-w-0 items-baseline gap-1 text-sm font-medium tracking-tight">

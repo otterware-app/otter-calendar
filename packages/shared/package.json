@@ -7,6 +7,10 @@
       "types": "./src/brand.ts",
       "import": "./src/brand.ts"
     },
+    "./brandSymbol": {
+      "types": "./src/brandSymbol.ts",
+      "import": "./src/brandSymbol.ts"
+    },
     "./themePalettes": {
       "types": "./src/themePalettes.ts",
       "import": "./src/themePalettes.ts"

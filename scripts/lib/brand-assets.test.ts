@@ -17,6 +17,10 @@ describe("brand-assets", () => {
         targetRelativePath: "dist/client/favicon.ico",
       },
       {
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFaviconSvg,
+        targetRelativePath: "dist/client/favicon.svg",
+      },
+      {
         sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon16Png,
         targetRelativePath: "dist/client/favicon-16x16.png",
       },
@@ -43,6 +47,10 @@ describe("brand-assets", () => {
       {
         sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconIco,
         targetRelativePath: "apps/web/public/favicon.ico",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconSvg,
+        targetRelativePath: "apps/web/public/favicon.svg",
       },
       {
         sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFavicon16Png,
@@ -84,18 +92,18 @@ describe("brand-assets", () => {
     expect(resolveWebAssetBrandForPackageVersion("0.0.29-preview.20260723.882")).toBe("nightly");
   });
 
-  it("uses the otter icons in every build, development included", () => {
+  it("gives each channel its own icon", () => {
     expect([
       BRAND_ASSET_PATHS.developmentIconComposerProject,
       BRAND_ASSET_PATHS.nightlyIconComposerProject,
       BRAND_ASSET_PATHS.productionIconComposerProject,
     ]).toEqual([
-      "assets/otter/app-icon.icon",
-      "assets/otter/app-icon.icon",
+      "assets/otter-dev/app-icon.icon",
+      "assets/otter-nightly/app-icon.icon",
       "assets/otter/app-icon.icon",
     ]);
-    expect(BRAND_ASSET_PATHS.developmentDesktopIconPng).toMatch(/^assets\/otter\/otter-/);
-    expect(BRAND_ASSET_PATHS.nightlyMacIconPng).toMatch(/^assets\/otter\/otter-/);
+    expect(BRAND_ASSET_PATHS.developmentDesktopIconPng).toMatch(/^assets\/otter-dev\/otter-dev-/);
+    expect(BRAND_ASSET_PATHS.nightlyMacIconPng).toMatch(/^assets\/otter-nightly\/otter-nightly-/);
     expect(BRAND_ASSET_PATHS.productionMacIconPng).toMatch(/^assets\/otter\/otter-/);
   });
 });
