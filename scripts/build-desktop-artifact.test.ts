@@ -163,31 +163,24 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         ),
       );
 
-      assert.deepStrictEqual(latestConfig, {
-        provider: "github",
-        owner: "example",
-        repo: "override",
-        releaseType: "release",
-      });
-      assert.deepStrictEqual(nightlyConfig, {
-        provider: "github",
-        owner: "example",
-        repo: "ci",
-        releaseType: "prerelease",
-        channel: "nightly",
-      });
+      const feed = {
+        provider: "generic",
+        url: "https://github.com/otterware-app/otterware/releases/download/channel-calendar/",
+        channel: "latest",
+      };
+      assert.deepStrictEqual(latestConfig, feed);
+      assert.deepStrictEqual(nightlyConfig, feed);
     }),
   );
 
-  it.effect("defaults local builds to the app's own release repository", () =>
+  it.effect("defaults bridge builds to the monorepo Calendar feed", () =>
     Effect.gen(function* () {
       const config = yield* resolveGitHubPublishConfig("latest");
 
       assert.deepStrictEqual(config, {
-        provider: "github",
-        owner: BRAND_REPOSITORY_OWNER,
-        repo: BRAND_REPOSITORY_NAME,
-        releaseType: "release",
+        provider: "generic",
+        url: "https://github.com/otterware-app/otterware/releases/download/channel-calendar/",
+        channel: "latest",
       });
     }).pipe(Effect.provide(emptyConfig)),
   );
@@ -204,10 +197,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.notProperty(previewChannel, "publish");
       assert.deepStrictEqual(release.publish, [
         {
-          provider: "github",
-          owner: BRAND_REPOSITORY_OWNER,
-          repo: BRAND_REPOSITORY_NAME,
-          releaseType: "release",
+          provider: "generic",
+          url: "https://github.com/otterware-app/otterware/releases/download/channel-calendar/",
+          channel: "latest",
         },
       ]);
     }).pipe(Effect.provide(emptyConfig)),

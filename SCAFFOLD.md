@@ -149,3 +149,10 @@ area by area. The platform areas (`apps/server/src/{auth,cloud,environment,persi
 Apps built from the scaffold merge scaffold changes from the `scaffold` remote:
 `git fetch scaffold && git merge scaffold/main`. Keep app changes out of the platform areas where
 you can, so those merges stay easy.
+
+## Monorepo migration bridge
+
+The final legacy desktop build listens to `otterware-app/otterware`'s `channel-calendar`
+generic feed and accepts profile prereleases without permitting downgrades. Calendar has
+no installed users to migrate; this change only prepares the feed hand-over. Wait for the
+developer's go and the first all-profile monorepo release before merging or releasing it.
